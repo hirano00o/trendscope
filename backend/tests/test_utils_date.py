@@ -1,11 +1,13 @@
 """Tests for date utility functions."""
 
+from datetime import date, datetime
+
 import pytest
-from datetime import datetime, date, timedelta
+
 from trendscope_backend.utils.date import (
-    parse_date,
-    get_trading_days,
     get_period_start_date,
+    get_trading_days,
+    parse_date,
     validate_date_range,
 )
 
@@ -49,14 +51,14 @@ class TestGetTradingDays:
     def test_get_trading_days_basic(self) -> None:
         """Test getting trading days for a basic period."""
         start_date = date(2024, 1, 1)  # Monday
-        end_date = date(2024, 1, 5)    # Friday
+        end_date = date(2024, 1, 5)  # Friday
         result = get_trading_days(start_date, end_date)
         assert len(result) == 5  # Monday to Friday
 
     def test_get_trading_days_exclude_weekends(self) -> None:
         """Test that weekends are excluded from trading days."""
         start_date = date(2024, 1, 1)  # Monday
-        end_date = date(2024, 1, 7)    # Sunday
+        end_date = date(2024, 1, 7)  # Sunday
         result = get_trading_days(start_date, end_date)
         assert len(result) == 5  # Only weekdays
 

@@ -1,13 +1,14 @@
 """Tests for data validation utility functions."""
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
+
 from trendscope_backend.utils.validation import (
-    validate_stock_symbol,
+    sanitize_input_string,
     validate_dataframe_structure,
     validate_numeric_range,
-    sanitize_input_string,
+    validate_stock_symbol,
 )
 
 
@@ -72,23 +73,27 @@ class TestValidateDataframeStructure:
 
     def test_validate_dataframe_structure_valid(self) -> None:
         """Test valid DataFrame with required columns."""
-        df = pd.DataFrame({
-            "Date": pd.date_range("2024-01-01", periods=5),
-            "Open": [100.0, 101.0, 102.0, 103.0, 104.0],
-            "High": [105.0, 106.0, 107.0, 108.0, 109.0],
-            "Low": [99.0, 100.0, 101.0, 102.0, 103.0],
-            "Close": [104.0, 105.0, 106.0, 107.0, 108.0],
-            "Volume": [1000000, 1100000, 1200000, 1300000, 1400000],
-        })
+        df = pd.DataFrame(
+            {
+                "Date": pd.date_range("2024-01-01", periods=5),
+                "Open": [100.0, 101.0, 102.0, 103.0, 104.0],
+                "High": [105.0, 106.0, 107.0, 108.0, 109.0],
+                "Low": [99.0, 100.0, 101.0, 102.0, 103.0],
+                "Close": [104.0, 105.0, 106.0, 107.0, 108.0],
+                "Volume": [1000000, 1100000, 1200000, 1300000, 1400000],
+            }
+        )
         # Should not raise any exception
         validate_dataframe_structure(df, ["Date", "Close"])
 
     def test_validate_dataframe_structure_missing_columns(self) -> None:
         """Test DataFrame missing required columns raises ValueError."""
-        df = pd.DataFrame({
-            "Date": pd.date_range("2024-01-01", periods=5),
-            "Open": [100.0, 101.0, 102.0, 103.0, 104.0],
-        })
+        df = pd.DataFrame(
+            {
+                "Date": pd.date_range("2024-01-01", periods=5),
+                "Open": [100.0, 101.0, 102.0, 103.0, 104.0],
+            }
+        )
         with pytest.raises(ValueError, match="Missing required columns"):
             validate_dataframe_structure(df, ["Date", "Close", "High"])
 
@@ -100,19 +105,23 @@ class TestValidateDataframeStructure:
 
     def test_validate_dataframe_structure_insufficient_rows(self) -> None:
         """Test DataFrame with insufficient rows raises ValueError."""
-        df = pd.DataFrame({
-            "Date": pd.date_range("2024-01-01", periods=2),
-            "Close": [100.0, 101.0],
-        })
+        df = pd.DataFrame(
+            {
+                "Date": pd.date_range("2024-01-01", periods=2),
+                "Close": [100.0, 101.0],
+            }
+        )
         with pytest.raises(ValueError, match="Insufficient data"):
             validate_dataframe_structure(df, ["Date", "Close"], min_rows=5)
 
     def test_validate_dataframe_structure_nan_values(self) -> None:
         """Test DataFrame with NaN values raises ValueError."""
-        df = pd.DataFrame({
-            "Date": pd.date_range("2024-01-01", periods=5),
-            "Close": [100.0, np.nan, 102.0, 103.0, 104.0],
-        })
+        df = pd.DataFrame(
+            {
+                "Date": pd.date_range("2024-01-01", periods=5),
+                "Close": [100.0, np.nan, 102.0, 103.0, 104.0],
+            }
+        )
         with pytest.raises(ValueError, match="DataFrame contains NaN values"):
             validate_dataframe_structure(df, ["Date", "Close"])
 
@@ -188,7 +197,9 @@ class TestSanitizeInputString:
 
     def test_sanitize_input_string_empty_result(self) -> None:
         """Test empty result after sanitization raises ValueError."""
-        with pytest.raises(ValueError, match="Input string is empty after sanitization"):
+        with pytest.raises(
+            ValueError, match="Input string is empty after sanitization"
+        ):
             sanitize_input_string("@#$%", allowed_chars="")
 
     def test_sanitize_input_string_none_input(self) -> None:
@@ -206,6 +217,6 @@ class TestSanitizeInputString:
         """Test case conversion."""
         result = sanitize_input_string("hello world", convert_case="upper")
         assert result == "HELLO WORLD"
-        
+
         result = sanitize_input_string("HELLO WORLD", convert_case="lower")
         assert result == "hello world"

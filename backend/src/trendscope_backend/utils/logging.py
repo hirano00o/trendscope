@@ -230,4 +230,3 @@ def log_performance(
         return wrapper
 
     return decorator
-

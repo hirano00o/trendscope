@@ -201,4 +201,3 @@ def sanitize_input_string(
         raise ValueError("Input string is empty after sanitization")
 
     return input_str
-

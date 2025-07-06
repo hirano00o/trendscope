@@ -220,4 +220,3 @@ def validate_config(
             raise ValueError(
                 f"Configuration validation failed for keys: {failed_validations}"
             )
-

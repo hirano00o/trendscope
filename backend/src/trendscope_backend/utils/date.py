@@ -140,4 +140,3 @@ def validate_date_range(start_date: date, end_date: date) -> None:
     today = date.today()
     if end_date > today:
         raise ValueError("End date cannot be in the future")
-

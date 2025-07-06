@@ -2,9 +2,9 @@
 
 import os
 import tempfile
-from pathlib import Path
 
 import pytest
+
 from trendscope_backend.utils.config import (
     ConfigManager,
     get_config_value,
@@ -69,19 +69,20 @@ class TestConfigManager:
             "timeout": 30,
             "features": ["feature1", "feature2"],
         }
-        
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             import json
+
             json.dump(config_data, f)
             f.flush()
-            
+
             config = ConfigManager()
             config.load_from_file(f.name)
-            
+
             assert config.get("api_key") == "test_key"
             assert config.get("timeout") == 30
             assert config.get("features") == ["feature1", "feature2"]
-            
+
             # Cleanup
             os.unlink(f.name)
 
@@ -93,24 +94,27 @@ class TestConfigManager:
 
     def test_config_manager_save_to_file(self) -> None:
         """Test saving configuration to JSON file."""
-        config = ConfigManager({
-            "setting1": "value1",
-            "setting2": 42,
-            "setting3": True,
-        })
-        
+        config = ConfigManager(
+            {
+                "setting1": "value1",
+                "setting2": 42,
+                "setting3": True,
+            }
+        )
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             config.save_to_file(f.name)
-            
+
             # Load and verify
             import json
-            with open(f.name, "r") as read_f:
+
+            with open(f.name) as read_f:
                 saved_data = json.load(read_f)
-                
+
             assert saved_data["setting1"] == "value1"
             assert saved_data["setting2"] == 42
             assert saved_data["setting3"] is True
-            
+
             # Cleanup
             os.unlink(f.name)
 
@@ -120,7 +124,7 @@ class TestConfigManager:
         os.environ["TRENDSCOPE_API_TIMEOUT"] = "60"
         os.environ["TRENDSCOPE_MAX_POINTS"] = "5000"
         os.environ["TRENDSCOPE_DEBUG"] = "true"
-        
+
         try:
             config = ConfigManager.from_env_vars("TRENDSCOPE_")
             assert config.get("API_TIMEOUT") == "60"
