@@ -21,7 +21,7 @@ class TestStockData:
 
     def test_stock_data_creation_valid(self) -> None:
         """Test creating StockData with valid data."""
-        stock_data = StockData(
+        stock_data = StockData(symbol="TEST", 
             symbol="AAPL",
             date=datetime(2024, 1, 1),
             open=Decimal("150.00"),
@@ -42,7 +42,7 @@ class TestStockData:
     def test_stock_data_symbol_validation(self) -> None:
         """Test symbol validation in StockData."""
         # Valid symbols
-        stock_data = StockData(
+        stock_data = StockData(symbol="TEST", 
             symbol="AAPL",
             date=datetime(2024, 1, 1),
             open=Decimal("150.00"),
@@ -55,7 +55,7 @@ class TestStockData:
 
         # Invalid empty symbol
         with pytest.raises(ValidationError):
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="",
                 date=datetime(2024, 1, 1),
                 open=Decimal("150.00"),
@@ -68,7 +68,7 @@ class TestStockData:
     def test_stock_data_price_validation(self) -> None:
         """Test price validation in StockData."""
         # Valid prices
-        stock_data = StockData(
+        stock_data = StockData(symbol="TEST", 
             symbol="AAPL",
             date=datetime(2024, 1, 1),
             open=Decimal("150.00"),
@@ -81,7 +81,7 @@ class TestStockData:
 
         # Invalid negative price
         with pytest.raises(ValidationError):
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 1),
                 open=Decimal("-150.00"),
@@ -94,7 +94,7 @@ class TestStockData:
     def test_stock_data_volume_validation(self) -> None:
         """Test volume validation in StockData."""
         # Valid volume
-        stock_data = StockData(
+        stock_data = StockData(symbol="TEST", 
             symbol="AAPL",
             date=datetime(2024, 1, 1),
             open=Decimal("150.00"),
@@ -107,7 +107,7 @@ class TestStockData:
 
         # Invalid negative volume
         with pytest.raises(ValidationError):
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 1),
                 open=Decimal("150.00"),
@@ -120,7 +120,7 @@ class TestStockData:
     def test_stock_data_price_relationship_validation(self) -> None:
         """Test price relationship validation in StockData."""
         # Valid price relationships (high >= max(open, close), low <= min(open, close))
-        StockData(
+        StockData(symbol="TEST", 
             symbol="AAPL",
             date=datetime(2024, 1, 1),
             open=Decimal("150.00"),
@@ -132,7 +132,7 @@ class TestStockData:
 
         # Invalid: high < close
         with pytest.raises(ValidationError):
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 1),
                 open=Decimal("150.00"),
@@ -144,7 +144,7 @@ class TestStockData:
 
     def test_stock_data_serialization(self) -> None:
         """Test StockData model serialization."""
-        stock_data = StockData(
+        stock_data = StockData(symbol="TEST", 
             symbol="AAPL",
             date=datetime(2024, 1, 1),
             open=Decimal("150.00"),
@@ -225,7 +225,7 @@ class TestTimeSeriesData:
     def test_time_series_data_creation(self) -> None:
         """Test creating TimeSeriesData with valid data."""
         stock_data_list = [
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 1),
                 open=Decimal("150.00"),
@@ -234,7 +234,7 @@ class TestTimeSeriesData:
                 close=Decimal("153.00"),
                 volume=1000000,
             ),
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 2),
                 open=Decimal("153.00"),
@@ -268,7 +268,7 @@ class TestTimeSeriesData:
     def test_time_series_data_computed_fields(self) -> None:
         """Test computed fields in TimeSeriesData."""
         stock_data_list = [
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 1),
                 open=Decimal("150.00"),
@@ -277,7 +277,7 @@ class TestTimeSeriesData:
                 close=Decimal("153.00"),
                 volume=1000000,
             ),
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 2),
                 open=Decimal("153.00"),
@@ -432,7 +432,7 @@ class TestAnalysisResult:
         time_series = TimeSeriesData(
             symbol="AAPL",
             data=[
-                StockData(
+                StockData(symbol="TEST", 
                     symbol="AAPL",
                     date=datetime(2024, 1, 1),
                     open=Decimal("150.00"),
@@ -470,7 +470,7 @@ class TestAnalysisResult:
         time_series = TimeSeriesData(
             symbol="AAPL",
             data=[
-                StockData(
+                StockData(symbol="TEST", 
                     symbol="AAPL",
                     date=datetime(2024, 1, 1),
                     open=Decimal("150.00"),
@@ -522,7 +522,7 @@ class TestAnalysisResult:
         time_series = TimeSeriesData(
             symbol="AAPL",
             data=[
-                StockData(
+                StockData(symbol="TEST", 
                     symbol="AAPL",
                     date=datetime(2024, 1, 1),
                     open=Decimal("150.00"),

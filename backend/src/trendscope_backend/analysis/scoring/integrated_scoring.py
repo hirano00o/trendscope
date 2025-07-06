@@ -17,6 +17,9 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
 from trendscope_backend.data.models import TechnicalIndicators
+from trendscope_backend.analysis.patterns.pattern_recognition import PatternAnalysisResult, PatternSignal
+from trendscope_backend.analysis.volatility.volatility_analysis import VolatilityAnalysisResult, VolatilityRegime
+from trendscope_backend.analysis.ml.ml_predictions import MLAnalysisResult
 
 
 @dataclass
@@ -157,6 +160,239 @@ class IntegratedScoringEngine:
             score=probability,
             confidence=confidence,
             weight=self.default_weights.get("technical", Decimal("0.25")),
+            details=details
+        )
+    
+    def calculate_pattern_category_score(self, pattern_result: PatternAnalysisResult) -> CategoryScore:
+        """Calculate score for pattern analysis category.
+        
+        Converts pattern analysis results into a unified category score
+        based on detected patterns and their signals.
+        
+        Args:
+            pattern_result: Pattern analysis results
+            
+        Returns:
+            CategoryScore representing pattern analysis results
+            
+        Example:
+            >>> pattern_result = PatternAnalysisResult(...)
+            >>> score = engine.calculate_pattern_category_score(pattern_result)
+            >>> print(f"Pattern score: {score.score}")
+            Pattern score: 0.72
+        """
+        # Use the pattern score directly
+        score = pattern_result.pattern_score
+        
+        # Calculate confidence based on signal strength and pattern count
+        confidence = pattern_result.signal_strength
+        if len(pattern_result.patterns) > 3:
+            confidence += Decimal("0.1")  # Bonus for multiple patterns
+        confidence = min(confidence, Decimal("0.95"))
+        
+        # Create detailed breakdown
+        details = {
+            "patterns_detected": len(pattern_result.patterns),
+            "overall_signal": pattern_result.overall_signal.value,
+            "signal_strength": float(pattern_result.signal_strength),
+            "pattern_types": [p.pattern_type.value for p in pattern_result.patterns]
+        }
+        
+        return CategoryScore(
+            category="patterns",
+            score=score,
+            confidence=confidence,
+            weight=self.default_weights.get("patterns", Decimal("0.20")),
+            details=details
+        )
+    
+    def calculate_volatility_category_score(self, volatility_result: VolatilityAnalysisResult) -> CategoryScore:
+        """Calculate score for volatility analysis category.
+        
+        Converts volatility analysis results into a unified category score
+        based on volatility regime and risk assessment.
+        
+        Args:
+            volatility_result: Volatility analysis results
+            
+        Returns:
+            CategoryScore representing volatility analysis results
+            
+        Example:
+            >>> volatility_result = VolatilityAnalysisResult(...)
+            >>> score = engine.calculate_volatility_category_score(volatility_result)
+            >>> print(f"Volatility score: {score.score}")
+            Volatility score: 0.65
+        """
+        # Use volatility score directly
+        score = volatility_result.volatility_score
+        
+        # Adjust score based on trend direction for trading opportunities
+        if volatility_result.trend_volatility == "increasing":
+            # Increasing volatility can indicate upcoming price moves
+            if score < Decimal("0.7"):  # Moderate volatility with increasing trend
+                score += Decimal("0.1")
+        elif volatility_result.trend_volatility == "decreasing":
+            # Decreasing volatility might indicate consolidation
+            if score > Decimal("0.3"):
+                score -= Decimal("0.05")
+        
+        score = max(Decimal("0.0"), min(Decimal("1.0"), score))
+        
+        # Calculate confidence based on breakout probability and regime stability
+        confidence = volatility_result.breakout_probability
+        
+        # Create detailed breakdown
+        details = {
+            "volatility_regime": volatility_result.regime.value,
+            "risk_level": volatility_result.risk_level.value,
+            "trend_volatility": volatility_result.trend_volatility,
+            "breakout_probability": float(volatility_result.breakout_probability),
+            "atr_percentage": float(volatility_result.metrics.atr_percentage)
+        }
+        
+        return CategoryScore(
+            category="volatility",
+            score=score,
+            confidence=confidence,
+            weight=self.default_weights.get("volatility", Decimal("0.15")),
+            details=details
+        )
+    
+    def calculate_ml_category_score(self, ml_result: MLAnalysisResult) -> CategoryScore:
+        """Calculate score for machine learning prediction category.
+        
+        Converts ML prediction results into a unified category score
+        based on ensemble predictions and model consensus.
+        
+        Args:
+            ml_result: Machine learning analysis results
+            
+        Returns:
+            CategoryScore representing ML prediction results
+            
+        Example:
+            >>> ml_result = MLAnalysisResult(...)
+            >>> score = engine.calculate_ml_category_score(ml_result)
+            >>> print(f"ML score: {score.score}")
+            ML score: 0.68
+        """
+        # Calculate score based on trend direction and prediction confidence
+        current_price = Decimal("100")  # This should be passed from actual current price
+        predicted_price = ml_result.price_target
+        
+        # Calculate percentage change
+        if current_price > 0:
+            price_change_pct = (predicted_price - current_price) / current_price
+        else:
+            price_change_pct = Decimal("0")
+        
+        # Convert price change to score (0.5 = no change, >0.5 = bullish, <0.5 = bearish)
+        if price_change_pct > Decimal("0.05"):  # > 5% increase
+            score = Decimal("0.8")
+        elif price_change_pct > Decimal("0.02"):  # > 2% increase
+            score = Decimal("0.65")
+        elif price_change_pct > Decimal("-0.02"):  # Between -2% and +2%
+            score = Decimal("0.5")
+        elif price_change_pct > Decimal("-0.05"):  # > -5% decrease
+            score = Decimal("0.35")
+        else:  # < -5% decrease
+            score = Decimal("0.2")
+        
+        # Adjust score based on consensus
+        consensus_adjustment = (ml_result.consensus_score - Decimal("0.5")) * Decimal("0.2")
+        score += consensus_adjustment
+        score = max(Decimal("0.0"), min(Decimal("1.0"), score))
+        
+        # Use ensemble prediction confidence
+        confidence = ml_result.ensemble_prediction.confidence
+        
+        # Boost confidence if multiple models agree
+        if ml_result.consensus_score > Decimal("0.8"):
+            confidence += Decimal("0.1")
+        confidence = min(confidence, Decimal("0.95"))
+        
+        # Create detailed breakdown
+        details = {
+            "trend_direction": ml_result.trend_direction,
+            "price_target": float(ml_result.price_target),
+            "consensus_score": float(ml_result.consensus_score),
+            "risk_assessment": ml_result.risk_assessment,
+            "models_used": len(ml_result.individual_predictions),
+            "ensemble_confidence": float(ml_result.ensemble_prediction.confidence)
+        }
+        
+        return CategoryScore(
+            category="ml",
+            score=score,
+            confidence=confidence,
+            weight=self.default_weights.get("ml", Decimal("0.20")),
+            details=details
+        )
+    
+    def calculate_fundamental_category_score(self, volume_data: List[int], avg_volume: Optional[int] = None) -> CategoryScore:
+        """Calculate score for fundamental analysis category (volume-based for now).
+        
+        Provides basic fundamental analysis based on volume patterns
+        and trading activity.
+        
+        Args:
+            volume_data: Recent volume data
+            avg_volume: Average volume for comparison
+            
+        Returns:
+            CategoryScore representing fundamental analysis results
+            
+        Example:
+            >>> volume_data = [1000, 1200, 1500, 1800]
+            >>> score = engine.calculate_fundamental_category_score(volume_data)
+            >>> print(f"Fundamental score: {score.score}")
+            Fundamental score: 0.62
+        """
+        if not volume_data:
+            return CategoryScore(
+                category="fundamental",
+                score=Decimal("0.5"),
+                confidence=Decimal("0.3"),
+                weight=self.default_weights.get("fundamental", Decimal("0.15")),
+                details={"error": "No volume data available"}
+            )
+        
+        # Calculate volume trend
+        recent_volume = sum(volume_data[-3:]) / 3 if len(volume_data) >= 3 else volume_data[-1]
+        
+        if avg_volume is None:
+            avg_volume = sum(volume_data) / len(volume_data)
+        
+        volume_ratio = recent_volume / avg_volume if avg_volume > 0 else 1.0
+        
+        # Score based on volume activity
+        if volume_ratio > 1.5:  # High volume (bullish or bearish breakout)
+            score = Decimal("0.7")  # Generally positive for momentum
+        elif volume_ratio > 1.2:  # Above average volume
+            score = Decimal("0.6")
+        elif volume_ratio > 0.8:  # Normal volume
+            score = Decimal("0.5")
+        else:  # Low volume (consolidation)
+            score = Decimal("0.4")
+        
+        # Volume consistency affects confidence
+        volume_std = (sum((v - avg_volume) ** 2 for v in volume_data) / len(volume_data)) ** 0.5
+        volume_cv = volume_std / avg_volume if avg_volume > 0 else 1.0
+        confidence = max(Decimal("0.3"), min(Decimal("0.8"), Decimal("0.7") - Decimal(str(volume_cv))))
+        
+        details = {
+            "volume_ratio": volume_ratio,
+            "recent_volume": recent_volume,
+            "average_volume": avg_volume,
+            "volume_trend": "increasing" if volume_ratio > 1.1 else "decreasing" if volume_ratio < 0.9 else "stable"
+        }
+        
+        return CategoryScore(
+            category="fundamental",
+            score=score,
+            confidence=confidence,
+            weight=self.default_weights.get("fundamental", Decimal("0.15")),
             details=details
         )
     

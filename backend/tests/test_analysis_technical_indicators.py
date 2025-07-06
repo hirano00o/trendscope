@@ -352,7 +352,7 @@ class TestTechnicalIndicatorCalculator:
             low_price = min(low_price, min(open_price, close_price))
 
             stock_data.append(
-                StockData(
+                StockData(symbol="TEST", 
                     symbol="TEST",
                     date=datetime(2024, 1, i + 1),
                     open=open_price,
@@ -464,7 +464,7 @@ class TestTechnicalIndicatorCalculator:
 
         # Create minimal data set
         minimal_data = [
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="TEST",
                 date=datetime(2024, 1, 1),
                 open=Decimal("100.0"),

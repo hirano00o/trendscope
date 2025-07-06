@@ -219,7 +219,11 @@ async def api_v1_root() -> dict[str, Any]:
     return {
         "message": "TrendScope API v1",
         "version": "1.0",
-        "endpoints": ["/api/v1/stock/{symbol}", "/api/v1/analysis/{symbol}"],
+        "endpoints": [
+            "/api/v1/stock/{symbol}", 
+            "/api/v1/analysis/{symbol}",
+            "/api/v1/comprehensive/{symbol}"
+        ],
     }
 
 
@@ -345,6 +349,113 @@ async def analyze_stock(
                     "symbol": symbol,
                 },
             ) from e
+
+
+# Comprehensive 6-category analysis endpoint
+@app.get("/api/v1/comprehensive/{symbol}", tags=["Comprehensive Analysis"])
+async def analyze_stock_comprehensive(
+    symbol: str,
+    period: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    include_ml: bool = True,
+    ml_models: str | None = None,
+) -> dict[str, Any]:
+    """Perform comprehensive 6-category stock analysis.
+    
+    Combines technical analysis, pattern recognition, volatility analysis,
+    machine learning predictions, fundamental analysis, and integrated scoring
+    into a unified analysis report.
+    
+    Args:
+        symbol: Stock symbol to analyze (e.g., 'AAPL', 'GOOGL')
+        period: Time period for analysis
+            (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+        start_date: Custom start date (YYYY-MM-DD format)
+        end_date: Custom end date (YYYY-MM-DD format)
+        include_ml: Whether to include ML predictions (can be slow, default: true)
+        ml_models: Comma-separated ML models to use (random_forest,svm,arima,lstm)
+        
+    Returns:
+        Comprehensive analysis results from all 6 categories
+        
+    Example:
+        GET /api/v1/comprehensive/AAPL?period=3mo&include_ml=true&ml_models=random_forest,svm
+        {
+            "symbol": "AAPL",
+            "analysis_date": "2024-01-15T10:30:00Z",
+            "current_price": "182.50",
+            "technical_analysis": {...},
+            "pattern_analysis": {...},
+            "volatility_analysis": {...},
+            "ml_predictions": {...},
+            "fundamental_analysis": {...},
+            "integrated_score": {
+                "overall_score": "0.72",
+                "confidence_level": "0.85",
+                "recommendation": "BUY",
+                "risk_assessment": "MODERATE"
+            },
+            "summary": "Comprehensive analysis shows bullish outlook..."
+        }
+    """
+    from trendscope_backend.api.comprehensive_analysis import get_comprehensive_analysis
+    from trendscope_backend.api.analysis import parse_date_string
+    
+    # Parse optional parameters
+    parsed_start_date = None
+    parsed_end_date = None
+    ml_model_list = None
+    
+    try:
+        if start_date:
+            parsed_start_date = parse_date_string(start_date)
+        if end_date:
+            parsed_end_date = parse_date_string(end_date)
+        if ml_models:
+            ml_model_list = [model.strip() for model in ml_models.split(",")]
+        
+        # Perform comprehensive analysis
+        result = await get_comprehensive_analysis(
+            symbol=symbol,
+            period=period,
+            start_date=parsed_start_date,
+            end_date=parsed_end_date,
+            include_ml=include_ml,
+            ml_models=ml_model_list,
+        )
+        
+        return result
+        
+    except ValueError as e:
+        # Handle date parsing errors specifically
+        error_msg = str(e)
+        logger.warning(f"Parameter validation error for comprehensive analysis {symbol}: {e}")
+        
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Invalid Parameter",
+                "message": error_msg,
+                "symbol": symbol,
+            },
+        ) from e
+    except HTTPException:
+        # Re-raise HTTPException from analysis module
+        raise
+    except Exception as e:
+        # Handle any other exceptions
+        error_msg = str(e)
+        logger.error(f"Unexpected error in comprehensive analysis for {symbol}: {e}", exc_info=True)
+        
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Analysis Error",
+                "message": "An error occurred during comprehensive analysis",
+                "symbol": symbol,
+            },
+        ) from e
 
 
 # Placeholder for stock analysis endpoint (keeping for backward compatibility)

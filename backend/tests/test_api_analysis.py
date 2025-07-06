@@ -33,7 +33,7 @@ class TestTechnicalAnalysisAPI:
             close_price = open_price + Decimal("1.0")
 
             stock_data.append(
-                StockData(
+                StockData(symbol="TEST", 
                     symbol="AAPL",
                     date=datetime(2024, 1, i + 1),
                     open=open_price,
@@ -501,7 +501,7 @@ class TestAnalysisUtilities:
 
         # Create sample stock data
         sample_stock_data = [
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 1),
                 open=Decimal("150.0"),
@@ -563,7 +563,7 @@ class TestAnalysisUtilities:
 
         # Create sample stock data
         sample_stock_data = [
-            StockData(
+            StockData(symbol="TEST", 
                 symbol="AAPL",
                 date=datetime(2024, 1, 1),
                 open=Decimal("150.0"),
