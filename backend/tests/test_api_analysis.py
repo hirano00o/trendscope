@@ -155,8 +155,8 @@ class TestTechnicalAnalysisAPI:
             assert response.status_code == 404
             data = response.json()
 
-            assert data["detail"]["error"] == "Data Not Available"
-            assert "symbol" in data["detail"]["message"].lower()
+            assert data["error"] == "Data Not Available"
+            assert "symbol" in data["message"].lower()
 
     def test_get_analysis_server_error(self, client: TestClient) -> None:
         """Test analysis endpoint with server error."""
@@ -550,3 +550,144 @@ class TestAnalysisUtilities:
         indicators = response["indicators"]
         assert indicators["sma_20"] == "152.50"
         assert indicators["rsi"] == "65.5"
+
+    def test_format_analysis_response_with_partial_indicators(self) -> None:
+        """Test formatting analysis response with some indicators set to None."""
+        from trendscope_backend.api.analysis import format_analysis_response
+        from trendscope_backend.data.models import (
+            AnalysisResult,
+            StockData,
+            TechnicalIndicators,
+            TimeSeriesData,
+        )
+
+        # Create sample stock data
+        sample_stock_data = [
+            StockData(
+                symbol="AAPL",
+                date=datetime(2024, 1, 1),
+                open=Decimal("150.0"),
+                high=Decimal("155.0"),
+                low=Decimal("148.0"),
+                close=Decimal("153.0"),
+                volume=1000000,
+            )
+        ]
+
+        # Create indicators with some None values
+        sample_indicators = TechnicalIndicators(
+            sma_20=Decimal("152.50"),
+            sma_50=None,  # Test None case
+            ema_12=Decimal("153.25"),
+            ema_26=None,  # Test None case
+            rsi=Decimal("65.5"),
+            macd=None,  # Test None case
+            macd_signal=None,  # Test None case
+            bollinger_upper=Decimal("158.00"),
+            bollinger_lower=None,  # Test None case
+        )
+
+        # Create analysis result
+        time_series = TimeSeriesData(
+            symbol="AAPL", data=sample_stock_data, period="1mo"
+        )
+
+        analysis_result = AnalysisResult(
+            symbol="AAPL",
+            time_series=time_series,
+            indicators=sample_indicators,
+            analysis_date=datetime(2024, 1, 15, 10, 30, 0),
+            probability_up=Decimal("0.65"),
+            confidence_level=Decimal("0.75"),
+        )
+
+        # Format response
+        response = format_analysis_response(analysis_result)
+
+        # Verify structure
+        assert response["symbol"] == "AAPL"
+        assert "analysis_date" in response
+        assert "time_series" in response
+        assert "indicators" in response
+        assert "recommendation" in response
+        assert "probability_up" in response
+        assert "confidence_level" in response
+
+        # Verify only non-None indicators are included
+        indicators = response["indicators"]
+        assert "sma_20" in indicators
+        assert "sma_50" not in indicators  # Should be excluded (None)
+        assert "ema_12" in indicators
+        assert "ema_26" not in indicators  # Should be excluded (None)
+        assert "rsi" in indicators
+        assert "macd" not in indicators  # Should be excluded (None)
+        assert "macd_signal" not in indicators  # Should be excluded (None)
+        assert "bollinger_upper" in indicators
+        assert "bollinger_lower" not in indicators  # Should be excluded (None)
+
+        # Verify values
+        assert indicators["sma_20"] == "152.50"
+        assert indicators["ema_12"] == "153.25"
+        assert indicators["rsi"] == "65.5"
+        assert indicators["bollinger_upper"] == "158.00"
+
+    def test_calculate_probability_function(self) -> None:
+        """Test calculate_probability function with different indicator combinations."""
+        from trendscope_backend.api.analysis import calculate_probability
+        from trendscope_backend.data.models import TechnicalIndicators
+
+        # Test with bullish indicators
+        bullish_indicators = TechnicalIndicators(
+            sma_20=Decimal("155.0"),
+            sma_50=Decimal("150.0"),  # SMA20 > SMA50 (bullish)
+            ema_12=Decimal("156.0"),
+            ema_26=Decimal("152.0"),  # EMA12 > EMA26 (bullish)
+            rsi=Decimal("25.0"),  # Oversold (bullish)
+            macd=Decimal("2.0"),
+            macd_signal=Decimal("1.0"),  # MACD > signal (bullish)
+        )
+
+        probability = calculate_probability(bullish_indicators)
+        assert probability > Decimal("0.5")  # Should be bullish
+
+        # Test with bearish indicators
+        bearish_indicators = TechnicalIndicators(
+            sma_20=Decimal("145.0"),
+            sma_50=Decimal("150.0"),  # SMA20 < SMA50 (bearish)
+            ema_12=Decimal("146.0"),
+            ema_26=Decimal("150.0"),  # EMA12 < EMA26 (bearish)
+            rsi=Decimal("75.0"),  # Overbought (bearish)
+            macd=Decimal("1.0"),
+            macd_signal=Decimal("2.0"),  # MACD < signal (bearish)
+        )
+
+        probability = calculate_probability(bearish_indicators)
+        assert probability < Decimal("0.5")  # Should be bearish
+
+    def test_calculate_confidence_function(self) -> None:
+        """Test calculate_confidence function with different scenarios."""
+        from trendscope_backend.api.analysis import calculate_confidence
+        from trendscope_backend.data.models import TechnicalIndicators
+
+        # Test with all indicators available and many data points
+        full_indicators = TechnicalIndicators(
+            sma_20=Decimal("150.0"),
+            sma_50=Decimal("145.0"),
+            ema_12=Decimal("151.0"),
+            ema_26=Decimal("147.0"),
+            rsi=Decimal("60.0"),
+            macd=Decimal("1.5"),
+            bollinger_upper=Decimal("155.0"),
+        )
+
+        confidence_high = calculate_confidence(full_indicators, 60)
+        assert confidence_high >= Decimal("0.8")  # Should be high confidence
+
+        # Test with fewer indicators and fewer data points
+        partial_indicators = TechnicalIndicators(
+            sma_20=Decimal("150.0"),
+            rsi=Decimal("60.0"),
+        )
+
+        confidence_low = calculate_confidence(partial_indicators, 15)
+        assert confidence_low < confidence_high  # Should be lower confidence

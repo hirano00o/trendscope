@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import yfinance as yf
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -286,9 +286,65 @@ async def analyze_stock(
 
         return result
 
-    except Exception:
-        # Let the analysis module handle specific error formatting
+    except ValueError as e:
+        # Handle date parsing errors specifically
+        error_msg = str(e)
+        logger.warning(f"Parameter validation error for {symbol}: {e}")
+        
+        # Determine error type based on error message
+        if "date" in error_msg.lower():
+            error_type = "Invalid Parameter"
+        else:
+            error_type = "Invalid Parameter"
+            
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": error_type,
+                "message": error_msg,
+                "symbol": symbol,
+            },
+        ) from e
+    except HTTPException:
+        # Re-raise HTTPException from analysis module
         raise
+    except Exception as e:
+        # Handle any other exceptions that weren't caught by analysis module
+        error_msg = str(e)
+        logger.error(f"Unexpected error in analysis endpoint for {symbol}: {e}", exc_info=True)
+        
+        # Check if it's a data availability issue
+        if ("no data available" in error_msg.lower() or 
+            "data not available" in error_msg.lower() or
+            "not found" in error_msg.lower()):
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "Data Not Available",
+                    "message": f"No stock data available for symbol {symbol}",
+                    "symbol": symbol,
+                },
+            ) from e
+        # Check if it's an internal calculation error
+        elif "internal calculation error" in error_msg.lower():
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "Analysis Error",
+                    "message": "An error occurred during analysis",
+                    "symbol": symbol,
+                },
+            ) from e
+        else:
+            # Default to server error
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "Analysis Error",
+                    "message": "An error occurred during analysis",
+                    "symbol": symbol,
+                },
+            ) from e
 
 
 # Placeholder for stock analysis endpoint (keeping for backward compatibility)
@@ -350,6 +406,8 @@ async def shutdown_event() -> None:
 
 
 # Global exception handler
+from fastapi.exceptions import HTTPException as FastAPIHTTPException
+
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc: Any) -> JSONResponse:
     """Handle 404 Not Found errors.
@@ -361,6 +419,13 @@ async def not_found_handler(request: Request, exc: Any) -> JSONResponse:
     Returns:
         JSON response with error details
     """
+    # Check if this is a custom HTTPException with detail structure
+    if isinstance(exc, FastAPIHTTPException) and isinstance(exc.detail, dict):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=exc.detail,
+        )
+    
     return JSONResponse(
         status_code=404,
         content={
@@ -407,6 +472,13 @@ async def internal_server_error_handler(request: Request, exc: Any) -> JSONRespo
     logger.error(
         f"Internal server error for {request.method} {request.url.path}: {exc}"
     )
+
+    # Check if this is a custom HTTPException with detail structure
+    if isinstance(exc, FastAPIHTTPException) and isinstance(exc.detail, dict):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=exc.detail,
+        )
 
     return JSONResponse(
         status_code=500,

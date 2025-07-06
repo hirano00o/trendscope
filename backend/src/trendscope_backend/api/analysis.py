@@ -355,8 +355,10 @@ async def get_stock_analysis(
         error_msg = str(e)
         logger.error(f"Analysis error for {symbol}: {e}", exc_info=True)
         
-        # Check if it's a data availability issue
-        if "no data" in error_msg.lower() or "not found" in error_msg.lower():
+        # Check if it's a data availability issue first
+        if ("no data available" in error_msg.lower() or 
+            "not found" in error_msg.lower() or
+            "data not available" in error_msg.lower()):
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -365,7 +367,18 @@ async def get_stock_analysis(
                     "symbol": symbol,
                 },
             ) from e
+        # Check if it's a server error (internal calculation error)
+        elif "internal calculation error" in error_msg.lower():
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "Analysis Error",
+                    "message": "An error occurred during analysis",
+                    "symbol": symbol,
+                },
+            ) from e
         else:
+            # Default: treat as server error
             raise HTTPException(
                 status_code=500,
                 detail={
