@@ -2,7 +2,6 @@
 name = "trendscope-backend"
 version = "0.1.0"
 description = "Stock trend analysis backend API"
-readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "yfinance>=0.2.0",
@@ -15,7 +14,6 @@ dependencies = [
     "matplotlib>=3.7.0",
     "seaborn>=0.12.0",
     "statsmodels>=0.14.0",
-    "TA-Lib>=0.4.0",
     "python-dateutil>=2.9.0.post0",
 ]
 
