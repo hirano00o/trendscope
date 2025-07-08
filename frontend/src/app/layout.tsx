@@ -1,6 +1,6 @@
 /**
  * Root layout component for Trendscope application
- * 
+ *
  * @description Provides the main layout structure with global providers,
  * metadata configuration, and consistent styling across all pages.
  * Includes TanStack Query provider for API state management.
@@ -16,16 +16,16 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
     title: {
         default: "Trendscope",
-        template: "%s | Trendscope"
+        template: "%s | Trendscope",
     },
     description: "Advanced stock price trend analysis with multi-method probability predictions",
     keywords: [
         "stock analysis",
-        "trend analysis", 
+        "trend analysis",
         "technical indicators",
         "stock predictions",
         "financial analysis",
-        "machine learning"
+        "machine learning",
     ],
     authors: [{ name: "Trendscope Team" }],
     creator: "Trendscope",
@@ -55,19 +55,13 @@ export const metadata: Metadata = {
     },
 }
 
-export default function RootLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en" suppressHydrationWarning>
             <body className={inter.className} suppressHydrationWarning>
                 <Providers>
                     <div className="min-h-screen bg-neutral-50">
-                        <main className="relative">
-                            {children}
-                        </main>
+                        <main className="relative">{children}</main>
                     </div>
                 </Providers>
             </body>

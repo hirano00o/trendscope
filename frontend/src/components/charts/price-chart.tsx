@@ -1,6 +1,6 @@
 /**
  * Price Chart Component
- * 
+ *
  * @description Comprehensive price chart component displaying candlestick data,
  * volume bars, and overlaid technical indicators (moving averages, Bollinger Bands).
  * Built with Recharts for responsive and interactive financial data visualization.
@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils"
 
 /**
  * Custom Candlestick Bar Component
- * 
+ *
  * @description Renders individual candlestick bars with proper coloring
  * based on price movement (green for bullish, red for bearish).
  */
@@ -43,33 +43,26 @@ interface CandlestickBarProps {
 
 const CandlestickBar: React.FC<CandlestickBarProps> = ({ payload, x, y, width, height }) => {
     if (!payload || !x || !y || !width || !height) return null
-    
+
     const { open, high, low, close } = payload
     const isUpDay = close > open
     const color = isUpDay ? "#10B981" : "#EF4444"
-    
+
     // Calculate dimensions
     const bodyHeight = Math.abs(close - open)
     const bodyTop = Math.min(close, open)
     const wickTop = high
     const wickBottom = low
-    
+
     // Scale calculations (simplified for demonstration)
     const scale = height / (high - low)
     const wickX = x + width / 2
-    
+
     return (
         <g>
             {/* Upper wick */}
-            <line
-                x1={wickX}
-                y1={y}
-                x2={wickX}
-                y2={y + (wickTop - bodyTop) * scale}
-                stroke={color}
-                strokeWidth={1}
-            />
-            
+            <line x1={wickX} y1={y} x2={wickX} y2={y + (wickTop - bodyTop) * scale} stroke={color} strokeWidth={1} />
+
             {/* Body */}
             <rect
                 x={x}
@@ -80,7 +73,7 @@ const CandlestickBar: React.FC<CandlestickBarProps> = ({ payload, x, y, width, h
                 stroke={color}
                 strokeWidth={1}
             />
-            
+
             {/* Lower wick */}
             <line
                 x1={wickX}
@@ -96,7 +89,7 @@ const CandlestickBar: React.FC<CandlestickBarProps> = ({ payload, x, y, width, h
 
 /**
  * Custom Tooltip Component
- * 
+ *
  * @description Displays comprehensive price and volume information
  * with proper formatting for financial data.
  */
@@ -108,10 +101,10 @@ interface CustomTooltipProps {
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null
-    
+
     const data = payload[0]?.payload
     if (!data) return null
-    
+
     return (
         <div className="bg-white p-3 border border-neutral-200 rounded-lg shadow-lg">
             <p className="font-medium text-neutral-800 mb-2">{label}</p>
@@ -130,10 +123,9 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label })
                 </div>
                 <div className="flex justify-between space-x-4">
                     <span className="text-neutral-600">Close:</span>
-                    <span className={cn(
-                        "font-medium",
-                        data.close > data.open ? "text-success-600" : "text-danger-600"
-                    )}>
+                    <span
+                        className={cn("font-medium", data.close > data.open ? "text-success-600" : "text-danger-600")}
+                    >
                         ${data.close?.toFixed(2)}
                     </span>
                 </div>
@@ -150,14 +142,14 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label })
 
 /**
  * Price Chart Component
- * 
+ *
  * @param props - Price chart props including data and configuration
  * @returns JSX element with price chart visualization
- * 
+ *
  * @example
  * ```tsx
- * <PriceChart 
- *   data={priceData} 
+ * <PriceChart
+ *   data={priceData}
  *   height={400}
  *   showVolume={true}
  *   indicators={{
@@ -176,11 +168,14 @@ export const PriceChart: React.FC<PriceChartProps> = ({
     timeRange = "1M",
     indicators = {},
 }) => {
-    const mergedTheme = React.useMemo(() => ({
-        ...defaultChartTheme,
-        ...theme,
-    }), [theme])
-    
+    const mergedTheme = React.useMemo(
+        () => ({
+            ...defaultChartTheme,
+            ...theme,
+        }),
+        [theme],
+    )
+
     // Use mock data if no data provided
     const chartData = React.useMemo(() => {
         if (!data || data.length === 0) {
@@ -188,21 +183,19 @@ export const PriceChart: React.FC<PriceChartProps> = ({
         }
         return data
     }, [data])
-    
+
     // Prepare chart data with indicators
     const processedData = React.useMemo(() => {
         let processed = [...chartData]
-        
+
         // Add moving averages (simplified calculation for demonstration)
         if (indicators.sma) {
             indicators.sma.forEach(({ period }, index) => {
                 processed = processed.map((point, i) => {
                     if (i < period - 1) return point
-                    
-                    const sum = processed
-                        .slice(i - period + 1, i + 1)
-                        .reduce((acc, p) => acc + p.close, 0)
-                    
+
+                    const sum = processed.slice(i - period + 1, i + 1).reduce((acc, p) => acc + p.close, 0)
+
                     return {
                         ...point,
                         [`sma${period}`]: sum / period,
@@ -210,28 +203,28 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                 })
             })
         }
-        
+
         return processed
     }, [chartData, indicators])
-    
+
     // Calculate price range for chart scaling
     const priceRange = React.useMemo(() => {
-        const prices = processedData.flatMap(d => [d.high, d.low])
+        const prices = processedData.flatMap((d) => [d.high, d.low])
         return {
             min: Math.min(...prices) * 0.98,
             max: Math.max(...prices) * 1.02,
         }
     }, [processedData])
-    
+
     // Calculate volume range
     const volumeRange = React.useMemo(() => {
-        const volumes = processedData.map(d => d.volume || 0)
+        const volumes = processedData.map((d) => d.volume || 0)
         return {
             min: 0,
             max: Math.max(...volumes) * 1.1,
         }
     }, [processedData])
-    
+
     return (
         <ChartContainer
             title="Price Chart"
@@ -252,26 +245,22 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                     bottom: showVolume ? 80 : 20,
                 }}
             >
-                <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    stroke={mergedTheme.grid}
-                    opacity={0.3}
-                />
-                
-                <XAxis 
+                <CartesianGrid strokeDasharray="3 3" stroke={mergedTheme.grid} opacity={0.3} />
+
+                <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12, fill: mergedTheme.text }}
                     stroke={mergedTheme.text}
                     tickFormatter={(value) => {
                         const date = new Date(value)
-                        return date.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric' 
+                        return date.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
                         })
                     }}
                 />
-                
-                <YAxis 
+
+                <YAxis
                     yAxisId="price"
                     orientation="left"
                     domain={[priceRange.min, priceRange.max]}
@@ -279,9 +268,9 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                     stroke={mergedTheme.text}
                     tickFormatter={(value) => `$${value.toFixed(0)}`}
                 />
-                
+
                 {showVolume && (
-                    <YAxis 
+                    <YAxis
                         yAxisId="volume"
                         orientation="right"
                         domain={[0, volumeRange.max]}
@@ -290,17 +279,17 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                         tickFormatter={(value) => formatNumberForChart(value)}
                     />
                 )}
-                
+
                 <Tooltip content={<CustomTooltip />} />
-                
-                <Legend 
-                    wrapperStyle={{ 
-                        paddingTop: '10px',
-                        fontSize: '12px',
+
+                <Legend
+                    wrapperStyle={{
+                        paddingTop: "10px",
+                        fontSize: "12px",
                         color: mergedTheme.text,
                     }}
                 />
-                
+
                 {/* Price Area (simplified - using Area for demonstration) */}
                 <Area
                     yAxisId="price"
@@ -312,18 +301,12 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                     strokeWidth={2}
                     name="Price"
                 />
-                
+
                 {/* Volume Bars */}
                 {showVolume && (
-                    <Bar
-                        yAxisId="volume"
-                        dataKey="volume"
-                        fill={mergedTheme.neutral}
-                        opacity={0.3}
-                        name="Volume"
-                    />
+                    <Bar yAxisId="volume" dataKey="volume" fill={mergedTheme.neutral} opacity={0.3} name="Volume" />
                 )}
-                
+
                 {/* Moving Averages */}
                 {indicators.sma?.map(({ period, color }, index) => (
                     <Line
@@ -337,7 +320,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                         name={`SMA ${period}`}
                     />
                 ))}
-                
+
                 {/* Bollinger Bands */}
                 {indicators.bollinger?.show && (
                     <>
@@ -363,9 +346,9 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                         />
                     </>
                 )}
-                
+
                 {/* Reference Lines */}
-                <ReferenceLine 
+                <ReferenceLine
                     yAxisId="price"
                     y={processedData[processedData.length - 1]?.close}
                     stroke={mergedTheme.warning}

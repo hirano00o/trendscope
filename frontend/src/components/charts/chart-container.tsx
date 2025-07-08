@@ -1,6 +1,6 @@
 /**
  * Chart Container Component
- * 
+ *
  * @description Common container component providing consistent layout,
  * theming, and responsive behavior for all chart types. Handles loading
  * states, error boundaries, and accessibility features.
@@ -71,14 +71,14 @@ export interface ChartContainerProps {
 
 /**
  * Chart Container with responsive layout and theming
- * 
+ *
  * @param props - Container props including title, dimensions, and theme
  * @returns JSX element with chart container layout
- * 
+ *
  * @example
  * ```tsx
- * <ChartContainer 
- *   title="Price Chart" 
+ * <ChartContainer
+ *   title="Price Chart"
  *   subtitle="AAPL - Last 30 days"
  *   height={400}
  *   status="success"
@@ -102,17 +102,24 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     status = "neutral",
     badges = [],
 }) => {
-    const mergedTheme = React.useMemo(() => ({
-        ...defaultChartTheme,
-        ...theme,
-    }), [theme])
+    const mergedTheme = React.useMemo(
+        () => ({
+            ...defaultChartTheme,
+            ...theme,
+        }),
+        [theme],
+    )
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case "success": return "text-success-600"
-            case "warning": return "text-warning-600"
-            case "error": return "text-danger-600"
-            default: return "text-neutral-600"
+            case "success":
+                return "text-success-600"
+            case "warning":
+                return "text-warning-600"
+            case "error":
+                return "text-danger-600"
+            default:
+                return "text-neutral-600"
         }
     }
 
@@ -122,14 +129,14 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                 <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                         <span>{title}</span>
-                        <Badge variant="destructive" size="sm">Error</Badge>
+                        <Badge variant="destructive" size="sm">
+                            Error
+                        </Badge>
                     </CardTitle>
-                    {subtitle && (
-                        <p className="text-sm text-neutral-600">{subtitle}</p>
-                    )}
+                    {subtitle && <p className="text-sm text-neutral-600">{subtitle}</p>}
                 </CardHeader>
                 <CardContent>
-                    <div 
+                    <div
                         className="flex items-center justify-center bg-danger-50 border border-danger-200 rounded-lg p-8"
                         style={{ height: height }}
                     >
@@ -152,29 +159,19 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                         <CardTitle className="flex items-center space-x-2">
                             <span className={getStatusColor(status)}>{title}</span>
                             {badges.map((badge, index) => (
-                                <Badge
-                                    key={index}
-                                    variant={badge.variant || "default"}
-                                    size="sm"
-                                >
+                                <Badge key={index} variant={badge.variant || "default"} size="sm">
                                     {badge.label}
                                 </Badge>
                             ))}
                         </CardTitle>
-                        {subtitle && (
-                            <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>
-                        )}
+                        {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
                     </div>
-                    {actions && (
-                        <div className="flex items-center space-x-2">
-                            {actions}
-                        </div>
-                    )}
+                    {actions && <div className="flex items-center space-x-2">{actions}</div>}
                 </div>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
-                    <div 
+                    <div
                         className="flex items-center justify-center bg-neutral-50 border border-neutral-200 rounded-lg"
                         style={{ height: height }}
                     >
@@ -210,14 +207,14 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
 
 /**
  * Chart Loading Component
- * 
+ *
  * @description Standalone loading component for charts
  */
 export const ChartLoading: React.FC<{ height?: number; message?: string }> = ({
     height = 400,
     message = "Loading chart...",
 }) => (
-    <div 
+    <div
         className="flex items-center justify-center bg-neutral-50 border border-neutral-200 rounded-lg"
         style={{ height }}
     >
@@ -230,19 +227,15 @@ export const ChartLoading: React.FC<{ height?: number; message?: string }> = ({
 
 /**
  * Chart Error Component
- * 
+ *
  * @description Standalone error component for charts
  */
-export const ChartError: React.FC<{ 
-    height?: number; 
-    error: string; 
-    onRetry?: () => void 
-}> = ({
-    height = 400,
-    error,
-    onRetry,
-}) => (
-    <div 
+export const ChartError: React.FC<{
+    height?: number
+    error: string
+    onRetry?: () => void
+}> = ({ height = 400, error, onRetry }) => (
+    <div
         className="flex items-center justify-center bg-danger-50 border border-danger-200 rounded-lg"
         style={{ height }}
     >

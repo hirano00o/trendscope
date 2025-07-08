@@ -1,6 +1,6 @@
 /**
  * Chart component type definitions
- * 
+ *
  * @description Type definitions for chart components including data structures,
  * props interfaces, and configuration options for technical analysis visualizations.
  */

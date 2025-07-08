@@ -1,6 +1,6 @@
 /**
  * Input component with validation states and styling
- * 
+ *
  * @description Customizable input component with support for different
  * variants, sizes, validation states, and icons. Built with consistent
  * styling to match the application's design system.
@@ -31,11 +31,11 @@ const inputVariants = cva(
             variant: "default",
             size: "default",
         },
-    }
+    },
 )
 
 export interface InputProps
-    extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'>,
+    extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size">,
         VariantProps<typeof inputVariants> {
     /**
      * Icon to display at the start of the input
@@ -65,45 +65,48 @@ export interface InputProps
 
 /**
  * Input component with validation and icons
- * 
+ *
  * @param props - Input props including variant, size, validation, and icons
  * @returns JSX input element with proper styling and validation display
- * 
+ *
  * @example
  * ```tsx
- * <Input 
+ * <Input
  *   label="Stock Symbol"
  *   placeholder="Enter symbol (e.g., AAPL)"
  *   variant="default"
  * />
- * 
- * <Input 
+ *
+ * <Input
  *   variant="error"
  *   error="Invalid stock symbol"
  *   startIcon={<SearchIcon />}
  * />
- * 
- * <Input 
+ *
+ * <Input
  *   size="lg"
  *   helperText="Enter a valid stock symbol"
  * />
  * ```
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-    ({ 
-        className, 
-        variant, 
-        size, 
-        startIcon,
-        endIcon,
-        error,
-        helperText,
-        label,
-        hiddenLabel = false,
-        type = "text",
-        id,
-        ...props 
-    }, ref) => {
+    (
+        {
+            className,
+            variant,
+            size,
+            startIcon,
+            endIcon,
+            error,
+            helperText,
+            label,
+            hiddenLabel = false,
+            type = "text",
+            id,
+            ...props
+        },
+        ref,
+    ) => {
         const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`
         const hasError = error && error.length > 0
         const finalVariant = hasError ? "error" : variant
@@ -111,24 +114,21 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         return (
             <div className="w-full">
                 {label && (
-                    <label 
+                    <label
                         htmlFor={inputId}
-                        className={cn(
-                            "block text-sm font-medium text-neutral-700 mb-1",
-                            hiddenLabel && "sr-only"
-                        )}
+                        className={cn("block text-sm font-medium text-neutral-700 mb-1", hiddenLabel && "sr-only")}
                     >
                         {label}
                     </label>
                 )}
-                
+
                 <div className="relative">
                     {startIcon && (
                         <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400">
                             {startIcon}
                         </div>
                     )}
-                    
+
                     <input
                         type={type}
                         id={inputId}
@@ -136,36 +136,28 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                             inputVariants({ variant: finalVariant, size }),
                             startIcon && "pl-10",
                             endIcon && "pr-10",
-                            className
+                            className,
                         )}
                         ref={ref}
                         {...props}
                     />
-                    
+
                     {endIcon && (
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400">
                             {endIcon}
                         </div>
                     )}
                 </div>
-                
+
                 {(error || helperText) && (
                     <div className="mt-1">
-                        {error && (
-                            <p className="text-sm text-danger-600">
-                                {error}
-                            </p>
-                        )}
-                        {!error && helperText && (
-                            <p className="text-sm text-neutral-600">
-                                {helperText}
-                            </p>
-                        )}
+                        {error && <p className="text-sm text-danger-600">{error}</p>}
+                        {!error && helperText && <p className="text-sm text-neutral-600">{helperText}</p>}
                     </div>
                 )}
             </div>
         )
-    }
+    },
 )
 
 Input.displayName = "Input"

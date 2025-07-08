@@ -1,6 +1,6 @@
 /**
  * React hooks for stock analysis API integration
- * 
+ *
  * @description Custom hooks built on TanStack Query for fetching and managing
  * stock analysis data with proper caching, error handling, and loading states.
  * Provides hooks for comprehensive analysis and individual analysis categories.
@@ -12,15 +12,15 @@ import { AnalysisData } from "@/types/analysis"
 
 /**
  * Hook for fetching comprehensive 6-category stock analysis
- * 
+ *
  * @description Fetches complete analysis including technical indicators,
  * patterns, volatility, ML predictions, fundamental data, and integrated scoring.
  * Includes proper caching and error handling.
- * 
+ *
  * @param symbol - Stock symbol to analyze (e.g., "AAPL")
  * @param options - Query options for customizing behavior
  * @returns Query result with data, loading, and error states
- * 
+ *
  * @example
  * ```tsx
  * function AnalysisComponent({ symbol }: { symbol: string }) {
@@ -28,11 +28,11 @@ import { AnalysisData } from "@/types/analysis"
  *     enabled: !!symbol && symbol.length > 0,
  *     staleTime: 5 * 60 * 1000, // 5 minutes
  *   })
- * 
+ *
  *   if (isLoading) return <div>Analyzing {symbol}...</div>
  *   if (error) return <div>Error: {error.message}</div>
  *   if (!data) return null
- * 
+ *
  *   return <AnalysisResults data={data} />
  * }
  * ```
@@ -44,7 +44,7 @@ export function useComprehensiveAnalysis(
         staleTime?: number
         refetchOnWindowFocus?: boolean
         retry?: boolean | number
-    } = {}
+    } = {},
 ) {
     const normalizedSymbol = symbol?.trim().toUpperCase()
 
@@ -74,20 +74,17 @@ export function useComprehensiveAnalysis(
 
 /**
  * Hook for fetching technical analysis only
- * 
+ *
  * @param symbol - Stock symbol to analyze
  * @param options - Query options
  * @returns Query result with technical analysis data
- * 
+ *
  * @example
  * ```tsx
  * const { data: technicalData } = useTechnicalAnalysis("AAPL")
  * ```
  */
-export function useTechnicalAnalysis(
-    symbol: string,
-    options: { enabled?: boolean } = {}
-) {
+export function useTechnicalAnalysis(symbol: string, options: { enabled?: boolean } = {}) {
     const normalizedSymbol = symbol?.trim().toUpperCase()
 
     return useQuery({
@@ -103,15 +100,12 @@ export function useTechnicalAnalysis(
 
 /**
  * Hook for fetching pattern analysis only
- * 
+ *
  * @param symbol - Stock symbol to analyze
  * @param options - Query options
  * @returns Query result with pattern analysis data
  */
-export function usePatternAnalysis(
-    symbol: string,
-    options: { enabled?: boolean } = {}
-) {
+export function usePatternAnalysis(symbol: string, options: { enabled?: boolean } = {}) {
     const normalizedSymbol = symbol?.trim().toUpperCase()
 
     return useQuery({
@@ -127,15 +121,12 @@ export function usePatternAnalysis(
 
 /**
  * Hook for fetching volatility analysis only
- * 
+ *
  * @param symbol - Stock symbol to analyze
  * @param options - Query options
  * @returns Query result with volatility analysis data
  */
-export function useVolatilityAnalysis(
-    symbol: string,
-    options: { enabled?: boolean } = {}
-) {
+export function useVolatilityAnalysis(symbol: string, options: { enabled?: boolean } = {}) {
     const normalizedSymbol = symbol?.trim().toUpperCase()
 
     return useQuery({
@@ -151,15 +142,12 @@ export function useVolatilityAnalysis(
 
 /**
  * Hook for fetching ML predictions only
- * 
+ *
  * @param symbol - Stock symbol to analyze
  * @param options - Query options
  * @returns Query result with ML prediction data
  */
-export function useMLAnalysis(
-    symbol: string,
-    options: { enabled?: boolean } = {}
-) {
+export function useMLAnalysis(symbol: string, options: { enabled?: boolean } = {}) {
     const normalizedSymbol = symbol?.trim().toUpperCase()
 
     return useQuery({
@@ -175,9 +163,9 @@ export function useMLAnalysis(
 
 /**
  * Hook for API health check
- * 
+ *
  * @returns Query result with health status
- * 
+ *
  * @example
  * ```tsx
  * const { data: health, isError } = useHealthCheck()
@@ -200,16 +188,16 @@ export function useHealthCheck() {
 
 /**
  * Mutation hook for triggering analysis on demand
- * 
+ *
  * @description Useful for manual refresh or when you need to control
  * when analysis is performed. Includes optimistic updates and cache invalidation.
- * 
+ *
  * @returns Mutation object with mutate function and status
- * 
+ *
  * @example
  * ```tsx
  * const analysisMutation = useAnalysisMutation()
- * 
+ *
  * const handleAnalyze = (symbol: string) => {
  *   analysisMutation.mutate(symbol, {
  *     onSuccess: (data) => {
@@ -220,9 +208,9 @@ export function useHealthCheck() {
  *     }
  *   })
  * }
- * 
+ *
  * return (
- *   <button 
+ *   <button
  *     onClick={() => handleAnalyze("AAPL")}
  *     disabled={analysisMutation.isPending}
  *   >
@@ -258,16 +246,16 @@ export function useAnalysisMutation() {
 
 /**
  * Hook for prefetching analysis data
- * 
+ *
  * @description Useful for preloading data when user is likely to request it,
  * such as when hovering over a stock symbol or typing in the search box.
- * 
+ *
  * @returns Prefetch function
- * 
+ *
  * @example
  * ```tsx
  * const prefetchAnalysis = useAnalysisPrefetch()
- * 
+ *
  * return (
  *   <input
  *     onFocus={() => prefetchAnalysis("AAPL")} // Prefetch on focus
@@ -297,10 +285,10 @@ export function useAnalysisPrefetch() {
 
 /**
  * Hook for getting cached analysis data without triggering a fetch
- * 
+ *
  * @param symbol - Stock symbol
  * @returns Cached analysis data or undefined
- * 
+ *
  * @example
  * ```tsx
  * const cachedData = useCachedAnalysis("AAPL")
@@ -313,17 +301,15 @@ export function useCachedAnalysis(symbol: string): AnalysisData | undefined {
 
     if (!normalizedSymbol) return undefined
 
-    return queryClient.getQueryData(
-        apiUtils.createQueryKey("comprehensive", { symbol: normalizedSymbol })
-    )
+    return queryClient.getQueryData(apiUtils.createQueryKey("comprehensive", { symbol: normalizedSymbol }))
 }
 
 /**
  * Hook for managing multiple symbol analysis
- * 
+ *
  * @param symbols - Array of stock symbols to analyze
  * @returns Array of query results for each symbol
- * 
+ *
  * @example
  * ```tsx
  * const analyses = useMultipleAnalysis(["AAPL", "GOOGL", "MSFT"])
@@ -331,11 +317,7 @@ export function useCachedAnalysis(symbol: string): AnalysisData | undefined {
  * ```
  */
 export function useMultipleAnalysis(symbols: string[]) {
-    const validSymbols = symbols
-        .map(s => s?.trim().toUpperCase())
-        .filter(s => s && s.length > 0)
+    const validSymbols = symbols.map((s) => s?.trim().toUpperCase()).filter((s) => s && s.length > 0)
 
-    return validSymbols.map(symbol => 
-        useComprehensiveAnalysis(symbol, { enabled: true })
-    )
+    return validSymbols.map((symbol) => useComprehensiveAnalysis(symbol, { enabled: true }))
 }

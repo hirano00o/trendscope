@@ -1,6 +1,6 @@
 /**
  * Chart components export module
- * 
+ *
  * @description Centralized exports for all chart components used throughout
  * the application for displaying technical analysis and stock data visualizations.
  */

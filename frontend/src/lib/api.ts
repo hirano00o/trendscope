@@ -1,6 +1,6 @@
 /**
  * API client and service functions for Trendscope backend integration
- * 
+ *
  * @description Centralized API client with error handling, retry logic,
  * and type-safe methods for interacting with the Trendscope backend.
  * Includes comprehensive analysis endpoints and error management.
@@ -24,7 +24,7 @@ export class ApiError extends Error {
     constructor(
         public status: number,
         message: string,
-        public data?: any
+        public data?: any,
     ) {
         super(message)
         this.name = "ApiError"
@@ -33,24 +33,21 @@ export class ApiError extends Error {
 
 /**
  * HTTP client with error handling and retry logic
- * 
+ *
  * @param endpoint - API endpoint path
  * @param options - Fetch options
  * @returns Promise resolving to parsed JSON response
  * @throws {ApiError} When request fails or returns error status
- * 
+ *
  * @example
  * ```typescript
  * const data = await apiClient("/api/v1/health")
  * const result = await apiClient("/api/v1/analyze/AAPL", { method: "POST" })
  * ```
  */
-async function apiClient<T = any>(
-    endpoint: string,
-    options: RequestInit = {}
-): Promise<T> {
+async function apiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_CONFIG.baseUrl}${endpoint}`
-    
+
     const config: RequestInit = {
         headers: {
             "Content-Type": "application/json",
@@ -85,19 +82,19 @@ async function apiClient<T = any>(
                 throw new ApiError(
                     response.status,
                     errorData.message || `HTTP ${response.status}: ${response.statusText}`,
-                    errorData
+                    errorData,
                 )
             }
 
             const data = await response.json()
             return data
-
         } catch (error) {
             lastError = error as Error
 
             // Don't retry on client errors (4xx) except for specific cases
             if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-                if (error.status !== 408 && error.status !== 429) { // Don't retry except for timeout and rate limit
+                if (error.status !== 408 && error.status !== 429) {
+                    // Don't retry except for timeout and rate limit
                     throw error
                 }
             }
@@ -105,7 +102,7 @@ async function apiClient<T = any>(
             // Wait before retry (exponential backoff)
             if (attempt < API_CONFIG.retries) {
                 const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
-                await new Promise(resolve => setTimeout(resolve, delay))
+                await new Promise((resolve) => setTimeout(resolve, delay))
             }
         }
     }
@@ -119,11 +116,11 @@ async function apiClient<T = any>(
 export const analysisApi = {
     /**
      * Performs comprehensive 6-category analysis for a stock symbol
-     * 
+     *
      * @param symbol - Stock symbol to analyze (e.g., "AAPL", "GOOGL")
      * @returns Promise resolving to comprehensive analysis data
      * @throws {ApiError} When analysis fails or symbol is invalid
-     * 
+     *
      * @example
      * ```typescript
      * const analysis = await analysisApi.getComprehensiveAnalysis("AAPL")
@@ -132,21 +129,15 @@ export const analysisApi = {
      */
     async getComprehensiveAnalysis(symbol: string): Promise<AnalysisData> {
         const normalizedSymbol = symbol.trim().toUpperCase()
-        
+
         if (!normalizedSymbol || normalizedSymbol.length === 0) {
             throw new ApiError(400, "Stock symbol is required")
         }
 
-        const response = await apiClient<AnalysisResponse>(
-            `/api/v1/comprehensive/${normalizedSymbol}`
-        )
+        const response = await apiClient<AnalysisResponse>(`/api/v1/comprehensive/${normalizedSymbol}`)
 
         if (!response.success || !response.data) {
-            throw new ApiError(
-                500,
-                response.error?.message || "Analysis failed",
-                response.error
-            )
+            throw new ApiError(500, response.error?.message || "Analysis failed", response.error)
         }
 
         return response.data
@@ -154,11 +145,11 @@ export const analysisApi = {
 
     /**
      * Gets technical analysis only for a stock symbol
-     * 
+     *
      * @param symbol - Stock symbol to analyze
      * @returns Promise resolving to technical analysis data
      * @throws {ApiError} When analysis fails
-     * 
+     *
      * @example
      * ```typescript
      * const technical = await analysisApi.getTechnicalAnalysis("AAPL")
@@ -172,7 +163,7 @@ export const analysisApi = {
 
     /**
      * Gets pattern analysis only for a stock symbol
-     * 
+     *
      * @param symbol - Stock symbol to analyze
      * @returns Promise resolving to pattern analysis data
      * @throws {ApiError} When analysis fails
@@ -184,7 +175,7 @@ export const analysisApi = {
 
     /**
      * Gets volatility analysis only for a stock symbol
-     * 
+     *
      * @param symbol - Stock symbol to analyze
      * @returns Promise resolving to volatility analysis data
      * @throws {ApiError} When analysis fails
@@ -196,7 +187,7 @@ export const analysisApi = {
 
     /**
      * Gets ML predictions only for a stock symbol
-     * 
+     *
      * @param symbol - Stock symbol to analyze
      * @returns Promise resolving to ML prediction data
      * @throws {ApiError} When analysis fails
@@ -208,10 +199,10 @@ export const analysisApi = {
 
     /**
      * Checks API health status
-     * 
+     *
      * @returns Promise resolving to health check data
      * @throws {ApiError} When health check fails
-     * 
+     *
      * @example
      * ```typescript
      * const health = await analysisApi.checkHealth()
@@ -229,7 +220,7 @@ export const analysisApi = {
 export const apiUtils = {
     /**
      * Checks if an error is an API error
-     * 
+     *
      * @param error - Error to check
      * @returns True if error is an ApiError instance
      */
@@ -239,10 +230,10 @@ export const apiUtils = {
 
     /**
      * Gets user-friendly error message from API error
-     * 
+     *
      * @param error - Error to process
      * @returns User-friendly error message
-     * 
+     *
      * @example
      * ```typescript
      * try {
@@ -285,7 +276,7 @@ export const apiUtils = {
 
     /**
      * Determines if an error is retryable
-     * 
+     *
      * @param error - Error to check
      * @returns True if error should be retried
      */
@@ -301,11 +292,11 @@ export const apiUtils = {
 
     /**
      * Creates query key for TanStack Query
-     * 
+     *
      * @param endpoint - API endpoint
      * @param params - Query parameters
      * @returns Array for use as query key
-     * 
+     *
      * @example
      * ```typescript
      * const queryKey = apiUtils.createQueryKey("comprehensive", { symbol: "AAPL" })

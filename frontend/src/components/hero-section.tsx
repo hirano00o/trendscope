@@ -1,6 +1,6 @@
 /**
  * Hero section component for the Trendscope landing page
- * 
+ *
  * @description Eye-catching hero section that introduces the application,
  * highlights key features, and encourages user engagement. Features
  * modern design with gradient backgrounds and animated elements.
@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils"
 
 /**
  * Hero section component with animated features
- * 
+ *
  * @returns JSX element containing the hero section layout
- * 
+ *
  * @example
  * ```tsx
  * <HeroSection />
@@ -65,7 +65,7 @@ export function HeroSection() {
         <div className="relative overflow-hidden">
             {/* Background gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary-50 via-white to-neutral-50" />
-            
+
             {/* Animated background elements */}
             <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute -top-10 -right-10 w-72 h-72 bg-primary-100 rounded-full opacity-20 animate-spin-slow" />
@@ -86,8 +86,7 @@ export function HeroSection() {
 
                     {/* Subtitle */}
                     <p className="mt-6 text-lg leading-8 text-neutral-600 sm:text-xl max-w-2xl mx-auto">
-                        6つの分析手法の力を活用し、信頼度加重の確率スコアと包括的なリスク評価で
-                        株価の動向を予測します。
+                        6つの分析手法の力を活用し、信頼度加重の確率スコアと包括的なリスク評価で 株価の動向を予測します。
                     </p>
 
                     {/* Feature showcase */}
@@ -98,9 +97,7 @@ export function HeroSection() {
                                 <h3 className="text-xl font-semibold text-neutral-900">
                                     {features[currentFeature].title}
                                 </h3>
-                                <p className="text-sm text-neutral-600 mt-1">
-                                    {features[currentFeature].description}
-                                </p>
+                                <p className="text-sm text-neutral-600 mt-1">{features[currentFeature].description}</p>
                             </div>
                         </div>
 
@@ -114,7 +111,7 @@ export function HeroSection() {
                                         "w-3 h-3 rounded-full transition-all duration-300",
                                         index === currentFeature
                                             ? "bg-primary-600 scale-125"
-                                            : "bg-neutral-300 hover:bg-neutral-400"
+                                            : "bg-neutral-300 hover:bg-neutral-400",
                                     )}
                                     aria-label={`Show ${features[index].title}`}
                                 />
@@ -126,21 +123,15 @@ export function HeroSection() {
                     <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-3">
                         <div className="text-center">
                             <div className="text-3xl font-bold text-primary-600">6</div>
-                            <div className="text-sm font-medium text-neutral-600 mt-1">
-                                分析カテゴリー
-                            </div>
+                            <div className="text-sm font-medium text-neutral-600 mt-1">分析カテゴリー</div>
                         </div>
                         <div className="text-center">
                             <div className="text-3xl font-bold text-success-600">95%</div>
-                            <div className="text-sm font-medium text-neutral-600 mt-1">
-                                予測精度
-                            </div>
+                            <div className="text-sm font-medium text-neutral-600 mt-1">予測精度</div>
                         </div>
                         <div className="text-center">
                             <div className="text-3xl font-bold text-warning-600">リアルタイム</div>
-                            <div className="text-sm font-medium text-neutral-600 mt-1">
-                                マーケット分析
-                            </div>
+                            <div className="text-sm font-medium text-neutral-600 mt-1">マーケット分析</div>
                         </div>
                     </div>
 
@@ -149,9 +140,7 @@ export function HeroSection() {
                         <p className="text-lg font-medium text-neutral-700 mb-4">
                             次の投資分析を始める準備はできましたか？
                         </p>
-                        <div className="text-sm text-neutral-500">
-                            下記に株式コードを入力して開始してください
-                        </div>
+                        <div className="text-sm text-neutral-500">下記に株式コードを入力して開始してください</div>
                     </div>
                 </div>
             </div>

@@ -1,6 +1,6 @@
 /**
  * Pattern Chart Component
- * 
+ *
  * @description Specialized chart for pattern analysis displaying detected
  * technical patterns, support/resistance levels, and trend lines with
  * annotations and confidence indicators.
@@ -34,7 +34,7 @@ import { PatternDetection } from "@/types/analysis"
 
 /**
  * Custom Pattern Annotation Component
- * 
+ *
  * @description Renders pattern annotations with icons and confidence indicators
  */
 interface PatternAnnotationProps {
@@ -48,29 +48,44 @@ interface PatternAnnotationProps {
 const PatternAnnotation: React.FC<PatternAnnotationProps> = ({ pattern, x, y, width, height }) => {
     const getPatternIcon = (patternType: string) => {
         switch (patternType) {
-            case "BULLISH_ENGULFING": return "📈"
-            case "BEARISH_ENGULFING": return "📉"
-            case "DOJI": return "🤏"
-            case "HAMMER": return "🔨"
-            case "SHOOTING_STAR": return "⭐"
-            case "SUPPORT_LEVEL": return "🟢"
-            case "RESISTANCE_LEVEL": return "🔴"
-            case "TREND_LINE": return "📏"
-            default: return "📊"
+            case "BULLISH_ENGULFING":
+                return "📈"
+            case "BEARISH_ENGULFING":
+                return "📉"
+            case "DOJI":
+                return "🤏"
+            case "HAMMER":
+                return "🔨"
+            case "SHOOTING_STAR":
+                return "⭐"
+            case "SUPPORT_LEVEL":
+                return "🟢"
+            case "RESISTANCE_LEVEL":
+                return "🔴"
+            case "TREND_LINE":
+                return "📏"
+            default:
+                return "📊"
         }
     }
-    
+
     const getPatternColor = (signal: string) => {
         switch (signal) {
-            case "STRONG_BULLISH": return "#10B981"
-            case "BULLISH": return "#34D399"
-            case "NEUTRAL": return "#6B7280"
-            case "BEARISH": return "#F87171"
-            case "STRONG_BEARISH": return "#EF4444"
-            default: return "#6B7280"
+            case "STRONG_BULLISH":
+                return "#10B981"
+            case "BULLISH":
+                return "#34D399"
+            case "NEUTRAL":
+                return "#6B7280"
+            case "BEARISH":
+                return "#F87171"
+            case "STRONG_BEARISH":
+                return "#EF4444"
+            default:
+                return "#6B7280"
         }
     }
-    
+
     return (
         <g>
             {/* Pattern highlight area */}
@@ -85,7 +100,7 @@ const PatternAnnotation: React.FC<PatternAnnotationProps> = ({ pattern, x, y, wi
                 strokeWidth={1}
                 strokeDasharray="3 3"
             />
-            
+
             {/* Pattern icon and label */}
             <text
                 x={x + width / 2}
@@ -97,7 +112,7 @@ const PatternAnnotation: React.FC<PatternAnnotationProps> = ({ pattern, x, y, wi
             >
                 {getPatternIcon(pattern.pattern_type)}
             </text>
-            
+
             {/* Confidence indicator */}
             <circle
                 cx={x + width - 10}
@@ -106,15 +121,8 @@ const PatternAnnotation: React.FC<PatternAnnotationProps> = ({ pattern, x, y, wi
                 fill={getPatternColor(pattern.signal)}
                 opacity={pattern.confidence}
             />
-            
-            <text
-                x={x + width - 10}
-                y={y + 15}
-                textAnchor="middle"
-                fontSize="9"
-                fill="white"
-                fontWeight="bold"
-            >
+
+            <text x={x + width - 10} y={y + 15} textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">
                 {Math.round(pattern.confidence * 100)}
             </text>
         </g>
@@ -123,7 +131,7 @@ const PatternAnnotation: React.FC<PatternAnnotationProps> = ({ pattern, x, y, wi
 
 /**
  * Custom Tooltip for Pattern Charts
- * 
+ *
  * @description Displays pattern information with detailed analysis
  */
 interface PatternTooltipProps {
@@ -135,17 +143,15 @@ interface PatternTooltipProps {
 
 const PatternTooltip: React.FC<PatternTooltipProps> = ({ active, payload, label, patterns }) => {
     if (!active || !payload || !payload.length) return null
-    
+
     const data = payload[0]?.payload
-    const relevantPatterns = patterns?.filter(p => 
-        p.start_index <= (data?.index || 0) && 
-        p.end_index >= (data?.index || 0)
-    ) || []
-    
+    const relevantPatterns =
+        patterns?.filter((p) => p.start_index <= (data?.index || 0) && p.end_index >= (data?.index || 0)) || []
+
     return (
         <div className="bg-white p-3 border border-neutral-200 rounded-lg shadow-lg max-w-xs">
             <p className="font-medium text-neutral-800 mb-2">{label}</p>
-            
+
             {/* Price information */}
             <div className="space-y-1 text-sm mb-3">
                 <div className="flex justify-between space-x-4">
@@ -153,7 +159,7 @@ const PatternTooltip: React.FC<PatternTooltipProps> = ({ active, payload, label,
                     <span className="font-medium">${data?.close?.toFixed(2)}</span>
                 </div>
             </div>
-            
+
             {/* Pattern information */}
             {relevantPatterns.length > 0 && (
                 <div className="border-t border-neutral-200 pt-2">
@@ -162,12 +168,16 @@ const PatternTooltip: React.FC<PatternTooltipProps> = ({ active, payload, label,
                         <div key={index} className="text-xs space-y-1">
                             <div className="flex justify-between">
                                 <span className="text-neutral-600">{pattern.pattern_type.replace(/_/g, " ")}:</span>
-                                <span className={cn(
-                                    "font-medium",
-                                    pattern.signal.includes("BULLISH") ? "text-success-600" :
-                                    pattern.signal.includes("BEARISH") ? "text-danger-600" :
-                                    "text-neutral-600"
-                                )}>
+                                <span
+                                    className={cn(
+                                        "font-medium",
+                                        pattern.signal.includes("BULLISH")
+                                            ? "text-success-600"
+                                            : pattern.signal.includes("BEARISH")
+                                              ? "text-danger-600"
+                                              : "text-neutral-600",
+                                    )}
+                                >
                                     {pattern.signal}
                                 </span>
                             </div>
@@ -186,7 +196,7 @@ const PatternTooltip: React.FC<PatternTooltipProps> = ({ active, payload, label,
 
 /**
  * Support/Resistance Lines Component
- * 
+ *
  * @description Renders horizontal lines for support and resistance levels
  */
 interface SupportResistanceLinesProps {
@@ -196,19 +206,19 @@ interface SupportResistanceLinesProps {
 
 const SupportResistanceLines: React.FC<SupportResistanceLinesProps> = ({ patterns, theme }) => {
     const supportLevels = patterns
-        .filter(p => p.pattern_type === "SUPPORT_LEVEL")
-        .map(p => p.key_levels?.support)
+        .filter((p) => p.pattern_type === "SUPPORT_LEVEL")
+        .map((p) => p.key_levels?.support)
         .filter(Boolean)
-    
+
     const resistanceLevels = patterns
-        .filter(p => p.pattern_type === "RESISTANCE_LEVEL")
-        .map(p => p.key_levels?.resistance)
+        .filter((p) => p.pattern_type === "RESISTANCE_LEVEL")
+        .map((p) => p.key_levels?.resistance)
         .filter(Boolean)
-    
+
     return (
         <>
             {supportLevels.map((level, index) => (
-                <ReferenceLine 
+                <ReferenceLine
                     key={`support-${index}`}
                     y={level}
                     stroke={theme.success}
@@ -218,7 +228,7 @@ const SupportResistanceLines: React.FC<SupportResistanceLinesProps> = ({ pattern
                 />
             ))}
             {resistanceLevels.map((level, index) => (
-                <ReferenceLine 
+                <ReferenceLine
                     key={`resistance-${index}`}
                     y={level}
                     stroke={theme.danger}
@@ -233,13 +243,13 @@ const SupportResistanceLines: React.FC<SupportResistanceLinesProps> = ({ pattern
 
 /**
  * Pattern Chart Component
- * 
+ *
  * @param props - Pattern chart props including patterns and price data
  * @returns JSX element with pattern analysis visualization
- * 
+ *
  * @example
  * ```tsx
- * <PatternChart 
+ * <PatternChart
  *   patterns={detectedPatterns}
  *   priceData={historicalPrices}
  *   height={400}
@@ -255,26 +265,28 @@ export const PatternChart: React.FC<PatternChartProps> = ({
     theme,
     highlightPatterns = true,
 }) => {
-    const mergedTheme = React.useMemo(() => ({
-        ...defaultChartTheme,
-        ...theme,
-    }), [theme])
-    
+    const mergedTheme = React.useMemo(
+        () => ({
+            ...defaultChartTheme,
+            ...theme,
+        }),
+        [theme],
+    )
+
     // Use mock data if no data provided
     const chartData = React.useMemo(() => {
-        const mockData = priceData && priceData.length > 0 ? 
-            priceData : createMockHistoricalData(30, 150)
-        
+        const mockData = priceData && priceData.length > 0 ? priceData : createMockHistoricalData(30, 150)
+
         return mockData.map((point, index) => ({
             ...point,
             index,
         }))
     }, [priceData])
-    
+
     // Create mock patterns if none provided
     const chartPatterns = React.useMemo(() => {
         if (patterns && patterns.length > 0) return patterns
-        
+
         // Generate mock patterns for demonstration
         return [
             {
@@ -315,25 +327,25 @@ export const PatternChart: React.FC<PatternChartProps> = ({
             },
         ]
     }, [patterns])
-    
+
     // Calculate price range for chart scaling
     const priceRange = React.useMemo(() => {
-        const prices = chartData.flatMap(d => [d.high, d.low])
+        const prices = chartData.flatMap((d) => [d.high, d.low])
         return {
             min: Math.min(...prices) * 0.98,
             max: Math.max(...prices) * 1.02,
         }
     }, [chartData])
-    
+
     // Pattern statistics
     const patternStats = React.useMemo(() => {
-        const bullishPatterns = chartPatterns.filter(p => p.signal.includes("BULLISH")).length
-        const bearishPatterns = chartPatterns.filter(p => p.signal.includes("BEARISH")).length
-        const neutralPatterns = chartPatterns.filter(p => p.signal === "NEUTRAL").length
-        
+        const bullishPatterns = chartPatterns.filter((p) => p.signal.includes("BULLISH")).length
+        const bearishPatterns = chartPatterns.filter((p) => p.signal.includes("BEARISH")).length
+        const neutralPatterns = chartPatterns.filter((p) => p.signal === "NEUTRAL").length
+
         return { bullishPatterns, bearishPatterns, neutralPatterns }
     }, [chartPatterns])
-    
+
     return (
         <ChartContainer
             title="Pattern Analysis"
@@ -355,42 +367,38 @@ export const PatternChart: React.FC<PatternChartProps> = ({
                     bottom: 20,
                 }}
             >
-                <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    stroke={mergedTheme.grid}
-                    opacity={0.3}
-                />
-                
-                <XAxis 
+                <CartesianGrid strokeDasharray="3 3" stroke={mergedTheme.grid} opacity={0.3} />
+
+                <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12, fill: mergedTheme.text }}
                     stroke={mergedTheme.text}
                     tickFormatter={(value) => {
                         const date = new Date(value)
-                        return date.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric' 
+                        return date.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
                         })
                     }}
                 />
-                
-                <YAxis 
+
+                <YAxis
                     domain={[priceRange.min, priceRange.max]}
                     tick={{ fontSize: 12, fill: mergedTheme.text }}
                     stroke={mergedTheme.text}
                     tickFormatter={(value) => `$${value.toFixed(0)}`}
                 />
-                
+
                 <Tooltip content={<PatternTooltip patterns={chartPatterns} />} />
-                
-                <Legend 
-                    wrapperStyle={{ 
-                        paddingTop: '10px',
-                        fontSize: '12px',
+
+                <Legend
+                    wrapperStyle={{
+                        paddingTop: "10px",
+                        fontSize: "12px",
                         color: mergedTheme.text,
                     }}
                 />
-                
+
                 {/* Price Area Chart */}
                 <Area
                     type="monotone"
@@ -401,7 +409,7 @@ export const PatternChart: React.FC<PatternChartProps> = ({
                     strokeWidth={2}
                     name="Price"
                 />
-                
+
                 {/* High/Low Lines */}
                 <Line
                     type="monotone"
@@ -412,7 +420,7 @@ export const PatternChart: React.FC<PatternChartProps> = ({
                     strokeDasharray="2 2"
                     name="High"
                 />
-                
+
                 <Line
                     type="monotone"
                     dataKey="low"
@@ -422,14 +430,11 @@ export const PatternChart: React.FC<PatternChartProps> = ({
                     strokeDasharray="2 2"
                     name="Low"
                 />
-                
+
                 {/* Support/Resistance Lines */}
-                <SupportResistanceLines 
-                    patterns={chartPatterns}
-                    theme={mergedTheme}
-                />
+                <SupportResistanceLines patterns={chartPatterns} theme={mergedTheme} />
             </ComposedChart>
-            
+
             {/* Pattern Legend */}
             <div className="mt-4 p-3 bg-neutral-50 rounded-lg">
                 <h4 className="text-sm font-medium text-neutral-700 mb-2">Pattern Detection Summary</h4>
@@ -448,7 +453,10 @@ export const PatternChart: React.FC<PatternChartProps> = ({
                     </div>
                     <div className="text-center">
                         <div className="text-primary-600 font-bold text-lg">
-                            {Math.round(chartPatterns.reduce((acc, p) => acc + p.confidence, 0) / chartPatterns.length * 100)}%
+                            {Math.round(
+                                (chartPatterns.reduce((acc, p) => acc + p.confidence, 0) / chartPatterns.length) * 100,
+                            )}
+                            %
                         </div>
                         <div className="text-neutral-600">Avg Confidence</div>
                     </div>

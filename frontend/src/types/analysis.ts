@@ -1,6 +1,6 @@
 /**
  * Type definitions for stock analysis data structures
- * 
+ *
  * @description Comprehensive type definitions matching the backend API
  * response format for 6-category stock analysis including technical
  * indicators, patterns, volatility, ML predictions, and integrated scoring.
@@ -50,7 +50,7 @@ export interface TechnicalAnalysisResult {
 }
 
 // Pattern Analysis Types
-export type PatternType = 
+export type PatternType =
     | "BULLISH_ENGULFING"
     | "BEARISH_ENGULFING"
     | "DOJI"
@@ -60,12 +60,7 @@ export type PatternType =
     | "RESISTANCE_LEVEL"
     | "TREND_LINE"
 
-export type PatternSignal = 
-    | "STRONG_BULLISH"
-    | "BULLISH"
-    | "NEUTRAL"
-    | "BEARISH"
-    | "STRONG_BEARISH"
+export type PatternSignal = "STRONG_BULLISH" | "BULLISH" | "NEUTRAL" | "BEARISH" | "STRONG_BEARISH"
 
 export interface PatternDetection {
     pattern_type: PatternType
@@ -107,16 +102,9 @@ export interface VolatilityAnalysisResult {
 }
 
 // Machine Learning Types
-export type ModelType = 
-    | "RANDOM_FOREST"
-    | "SVM"
-    | "ARIMA"
-    | "ENSEMBLE"
+export type ModelType = "RANDOM_FOREST" | "SVM" | "ARIMA" | "ENSEMBLE"
 
-export type PredictionHorizon = 
-    | "SHORT_TERM"
-    | "MEDIUM_TERM"
-    | "LONG_TERM"
+export type PredictionHorizon = "SHORT_TERM" | "MEDIUM_TERM" | "LONG_TERM"
 
 export interface ModelPrediction {
     model_type: ModelType
@@ -142,13 +130,13 @@ export interface AnalysisData {
     symbol: string
     timestamp: string
     current_price: number
-    
+
     // 6 Category Analysis Results
     technical_analysis: TechnicalAnalysisResult
     pattern_analysis: PatternAnalysisResult
     volatility_analysis: VolatilityAnalysisResult
     ml_analysis: MLAnalysisResult
-    
+
     // Fundamental analysis (volume-based for now)
     fundamental_analysis: {
         volume_analysis: {
@@ -160,10 +148,10 @@ export interface AnalysisData {
         score: number
         confidence: number
     }
-    
+
     // Integrated scoring results
     integrated_score: IntegratedScore
-    
+
     // Additional metadata
     analysis_metadata: {
         data_points_used: number

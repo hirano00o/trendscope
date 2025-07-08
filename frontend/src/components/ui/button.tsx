@@ -1,6 +1,6 @@
 /**
  * Button component with multiple variants and sizes
- * 
+ *
  * @description Customizable button component built with class-variance-authority
  * for consistent styling across the application. Supports multiple variants,
  * sizes, and states including loading and disabled states.
@@ -17,7 +17,8 @@ const buttonVariants = cva(
             variant: {
                 default: "bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-primary-500",
                 destructive: "bg-danger-600 text-white hover:bg-danger-700 focus-visible:ring-danger-500",
-                outline: "border border-neutral-300 bg-transparent text-neutral-900 hover:bg-neutral-50 focus-visible:ring-neutral-500",
+                outline:
+                    "border border-neutral-300 bg-transparent text-neutral-900 hover:bg-neutral-50 focus-visible:ring-neutral-500",
                 secondary: "bg-neutral-200 text-neutral-900 hover:bg-neutral-300 focus-visible:ring-neutral-500",
                 ghost: "text-neutral-900 hover:bg-neutral-100 focus-visible:ring-neutral-500",
                 link: "text-primary-600 underline-offset-4 hover:underline focus-visible:ring-primary-500",
@@ -36,7 +37,7 @@ const buttonVariants = cva(
             variant: "default",
             size: "default",
         },
-    }
+    },
 )
 
 export interface ButtonProps
@@ -62,38 +63,30 @@ export interface ButtonProps
 
 /**
  * Button component with variants and loading states
- * 
+ *
  * @param props - Button props including variant, size, loading state, and icons
  * @returns JSX button element with proper styling and behavior
- * 
+ *
  * @example
  * ```tsx
  * <Button variant="default" size="lg">
  *   Click me
  * </Button>
- * 
+ *
  * <Button variant="outline" isLoading loadingText="Analyzing...">
  *   Analyze Stock
  * </Button>
- * 
+ *
  * <Button variant="ghost" startIcon={<SearchIcon />}>
  *   Search
  * </Button>
  * ```
  */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ 
-        className, 
-        variant, 
-        size, 
-        isLoading = false,
-        loadingText,
-        startIcon,
-        endIcon,
-        children,
-        disabled,
-        ...props 
-    }, ref) => {
+    (
+        { className, variant, size, isLoading = false, loadingText, startIcon, endIcon, children, disabled, ...props },
+        ref,
+    ) => {
         const isDisabled = disabled || isLoading
 
         return (
@@ -110,14 +103,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                         fill="none"
                         viewBox="0 0 24 24"
                     >
-                        <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                        />
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path
                             className="opacity-75"
                             fill="currentColor"
@@ -125,21 +111,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                         />
                     </svg>
                 )}
-                
-                {!isLoading && startIcon && (
-                    <span className="mr-2">{startIcon}</span>
-                )}
-                
-                <span>
-                    {isLoading && loadingText ? loadingText : children}
-                </span>
-                
-                {!isLoading && endIcon && (
-                    <span className="ml-2">{endIcon}</span>
-                )}
+
+                {!isLoading && startIcon && <span className="mr-2">{startIcon}</span>}
+
+                <span>{isLoading && loadingText ? loadingText : children}</span>
+
+                {!isLoading && endIcon && <span className="ml-2">{endIcon}</span>}
             </button>
         )
-    }
+    },
 )
 
 Button.displayName = "Button"
