@@ -12,6 +12,7 @@ import { useState } from "react"
 import { StockAnalysisForm } from "@/components/stock-analysis-form"
 import { AnalysisResults } from "@/components/analysis-results"
 import { HeroSection } from "@/components/hero-section"
+import { useComprehensiveAnalysis } from "@/hooks/use-analysis"
 import { type AnalysisData } from "@/types/analysis"
 
 /**
@@ -30,6 +31,7 @@ import { type AnalysisData } from "@/types/analysis"
 export default function Page() {
     const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null)
     const [isAnalyzing, setIsAnalyzing] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     /**
      * Handles stock analysis request
@@ -38,25 +40,53 @@ export default function Page() {
      * @throws {Error} When analysis fails or symbol is invalid
      */
     const handleAnalysis = async (symbol: string) => {
+        console.log(`🚀 Starting analysis for symbol: ${symbol}`)
         setIsAnalyzing(true)
         setAnalysisData(null)
-
+        setError(null)
+        
         try {
-            // Call the comprehensive analysis API
-            const response = await fetch(`/api/analysis/comprehensive/${symbol}`)
+            // Call the API directly using fetch
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+            const url = `${apiUrl}/api/v1/comprehensive/${symbol}`
+            
+            console.log(`📡 Making API request to: ${url}`)
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            
+            console.log(`📊 API response status: ${response.status}`)
             
             if (!response.ok) {
-                throw new Error(`Analysis failed: ${response.statusText}`)
+                const errorText = await response.text()
+                console.error(`❌ API error: ${response.status} - ${errorText}`)
+                throw new Error(`API request failed: ${response.status}`)
             }
-
-            const data: AnalysisData = await response.json()
-            setAnalysisData(data)
+            
+            const response_data = await response.json()
+            console.log(`✅ API response received:`, response_data)
+            
+            // Check if the response has the expected wrapper structure
+            if (response_data && response_data.success && response_data.data) {
+                console.log(`🎯 Setting analysis data...`)
+                setAnalysisData(response_data.data)
+            } else {
+                console.error(`❌ Invalid response structure:`, response_data)
+                throw new Error('Invalid response data structure')
+            }
+            
         } catch (error) {
-            console.error("Analysis failed:", error)
-            // In a real app, we'd show proper error handling UI
+            console.error("❌ Analysis failed:", error)
+            const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました'
+            setError(errorMessage)
             throw error
         } finally {
             setIsAnalyzing(false)
+            console.log(`🏁 Analysis completed for ${symbol}`)
         }
     }
 
@@ -68,15 +98,15 @@ export default function Page() {
                     <div className="flex h-16 items-center justify-between">
                         <div className="flex items-center">
                             <h1 className="text-xl font-bold text-neutral-900">
-                                Trendscope
+                                トレンドスコープ
                             </h1>
                             <span className="ml-2 rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
-                                Beta
+                                ベータ版
                             </span>
                         </div>
                         <div className="flex items-center space-x-4">
                             <span className="text-sm text-neutral-600">
-                                Advanced Stock Analysis
+                                高度な株価分析
                             </span>
                         </div>
                     </div>
@@ -85,13 +115,25 @@ export default function Page() {
 
             {/* Main Content */}
             <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                {!analysisData ? (
+                {!analysisData && !isAnalyzing ? (
                     <div className="space-y-12">
                         {/* Hero Section */}
                         <HeroSection />
                         
                         {/* Stock Analysis Form */}
                         <div className="mx-auto max-w-2xl">
+                            {error && (
+                                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <h3 className="text-lg font-medium text-red-800 mb-2">エラーが発生しました</h3>
+                                    <p className="text-red-700">{error}</p>
+                                    <button 
+                                        onClick={() => setError(null)}
+                                        className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                                    >
+                                        エラーを閉じる
+                                    </button>
+                                </div>
+                            )}
                             <StockAnalysisForm 
                                 onAnalyze={handleAnalysis}
                                 isLoading={isAnalyzing}
@@ -102,36 +144,48 @@ export default function Page() {
                         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                             <div className="card">
                                 <div className="card-header">
-                                    <h3 className="card-title">Technical Analysis</h3>
+                                    <h3 className="card-title">テクニカル分析</h3>
                                 </div>
                                 <p className="text-sm text-neutral-600">
-                                    SMA/EMA crossovers, RSI, MACD, and Bollinger Bands analysis 
-                                    for comprehensive trend identification.
+                                    SMA/EMAクロスオーバー、RSI、MACD、ボリンジャーバンド分析による
+                                    包括的なトレンド識別。
                                 </p>
                             </div>
                             
                             <div className="card">
                                 <div className="card-header">
-                                    <h3 className="card-title">Pattern Recognition</h3>
+                                    <h3 className="card-title">パターン認識</h3>
                                 </div>
                                 <p className="text-sm text-neutral-600">
-                                    Candlestick patterns, support/resistance levels, and 
-                                    trend line analysis for market sentiment.
+                                    ローソク足パターン、サポート/レジスタンスレベル、
+                                    トレンドライン分析によるマーケットセンチメント解析。
                                 </p>
                             </div>
                             
                             <div className="card">
                                 <div className="card-header">
-                                    <h3 className="card-title">ML Predictions</h3>
+                                    <h3 className="card-title">機械学習予測</h3>
                                 </div>
                                 <p className="text-sm text-neutral-600">
-                                    Ensemble machine learning models including Random Forest, 
-                                    SVM, and ARIMA for price forecasting.
+                                    ランダムフォレスト、SVM、ARIMAを含むアンサンブル機械学習モデルによる
+                                    価格予測。
                                 </p>
                             </div>
                         </div>
                     </div>
-                ) : (
+                ) : isAnalyzing ? (
+                    <div className="flex items-center justify-center min-h-[60vh]">
+                        <div className="text-center">
+                            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div>
+                            <h2 className="text-xl font-semibold text-neutral-900 mb-2">
+                                株式を分析中...
+                            </h2>
+                            <p className="text-neutral-600">
+                                包括的な分析を実行しています。しばらくお待ちください。
+                            </p>
+                        </div>
+                    </div>
+                ) : analysisData ? (
                     <div className="space-y-8">
                         {/* Back to Search */}
                         <div className="flex items-center justify-between">
@@ -139,14 +193,14 @@ export default function Page() {
                                 onClick={() => setAnalysisData(null)}
                                 className="btn btn-outline"
                             >
-                                ← New Analysis
+                                ← 新しい分析
                             </button>
                             <div className="text-right">
                                 <h2 className="text-lg font-semibold text-neutral-900">
-                                    Analysis Results
+                                    分析結果
                                 </h2>
                                 <p className="text-sm text-neutral-600">
-                                    {analysisData.symbol} • {new Date().toLocaleDateString()}
+                                    {analysisData.symbol} • {new Date().toLocaleDateString('ja-JP')}
                                 </p>
                             </div>
                         </div>
@@ -154,7 +208,7 @@ export default function Page() {
                         {/* Analysis Results */}
                         <AnalysisResults data={analysisData} />
                     </div>
-                )}
+                ) : null}
             </main>
 
             {/* Footer */}
@@ -162,10 +216,10 @@ export default function Page() {
                 <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                     <div className="text-center text-sm text-neutral-600">
                         <p>
-                            Trendscope • Advanced Stock Analysis Platform
+                            トレンドスコープ • 高度な株価分析プラットフォーム
                         </p>
                         <p className="mt-1">
-                            Disclaimer: This is for educational purposes only. Not financial advice.
+                            免責事項：これは教育目的のみのためです。投資助言ではありません。
                         </p>
                     </div>
                 </div>

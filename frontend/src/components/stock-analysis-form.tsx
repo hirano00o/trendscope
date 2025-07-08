@@ -19,14 +19,14 @@ import { StockAnalysisFormProps } from "@/types/analysis"
 
 // Popular stock symbols for quick selection
 const POPULAR_STOCKS = [
-    { symbol: "AAPL", name: "Apple Inc." },
-    { symbol: "GOOGL", name: "Alphabet Inc." },
-    { symbol: "MSFT", name: "Microsoft Corp." },
-    { symbol: "AMZN", name: "Amazon.com Inc." },
-    { symbol: "TSLA", name: "Tesla Inc." },
-    { symbol: "NVDA", name: "NVIDIA Corp." },
-    { symbol: "META", name: "Meta Platforms Inc." },
-    { symbol: "NFLX", name: "Netflix Inc." },
+    { symbol: "AAPL", name: "アップル" },
+    { symbol: "GOOGL", name: "アルファベット（グーグル）" },
+    { symbol: "MSFT", name: "マイクロソフト" },
+    { symbol: "AMZN", name: "アマゾン" },
+    { symbol: "TSLA", name: "テスラ" },
+    { symbol: "NVDA", name: "エヌビディア" },
+    { symbol: "META", name: "メタ（フェイスブック）" },
+    { symbol: "NFLX", name: "ネットフリックス" },
 ] as const
 
 /**
@@ -59,15 +59,15 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
         const normalized = normalizeStockSymbol(value)
         
         if (!normalized) {
-            return "Please enter a stock symbol"
+            return "株式コードを入力してください"
         }
         
         if (normalized.length < 1 || normalized.length > 10) {
-            return "Symbol must be 1-10 characters long"
+            return "株式コードは1〜10文字で入力してください"
         }
         
         if (!isValidStockSymbol(normalized)) {
-            return "Symbol can only contain letters"
+            return "株式コードには英字のみ使用できます"
         }
         
         return ""
@@ -160,10 +160,10 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
         <Card className="p-8">
             <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-neutral-900 mb-2">
-                    Analyze Any Stock
+                    任意の株式を分析
                 </h2>
                 <p className="text-neutral-600">
-                    Enter a stock symbol to get comprehensive analysis with probability-based predictions
+                    株式コードを入力して、確率に基づく予測で包括的な分析を取得してください
                 </p>
             </div>
 
@@ -172,12 +172,12 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
                 <div className="space-y-4">
                     <div className="relative">
                         <Input
-                            label="Stock Symbol"
-                            placeholder="e.g., AAPL, GOOGL, MSFT"
+                            label="株式コード"
+                            placeholder="例: AAPL, GOOGL, MSFT"
                             value={symbol}
                             onChange={handleSymbolChange}
                             error={error}
-                            helperText={!error ? "Enter any valid stock symbol for analysis" : undefined}
+                            helperText={!error ? "分析したい有効な株式コードを入力してください" : undefined}
                             size="lg"
                             disabled={isLoading}
                             startIcon={
@@ -220,9 +220,9 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
                         className="w-full"
                         disabled={!canSubmit}
                         isLoading={isLoading}
-                        loadingText="Analyzing Stock..."
+                        loadingText="株式を分析中..."
                     >
-                        {isLoading ? "Running Analysis..." : "Analyze Stock"}
+                        {isLoading ? "分析実行中..." : "株式を分析"}
                     </Button>
                 </div>
             </form>
@@ -231,10 +231,10 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
             <div className="mt-8">
                 <div className="text-center mb-4">
                     <h3 className="text-sm font-medium text-neutral-700 mb-2">
-                        Or try a popular stock
+                        または人気銘柄を試す
                     </h3>
                     <p className="text-xs text-neutral-500">
-                        Click any symbol below for instant analysis
+                        下記のコードをクリックして即座に分析
                     </p>
                 </div>
 
@@ -264,17 +264,17 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
             <div className="mt-8 pt-6 border-t border-neutral-200">
                 <div className="text-center mb-4">
                     <h4 className="text-sm font-medium text-neutral-700">
-                        What you'll get
+                        取得できる分析内容
                     </h4>
                 </div>
                 
                 <div className="flex flex-wrap justify-center gap-2">
-                    <Badge variant="outline" size="sm">Technical Indicators</Badge>
-                    <Badge variant="outline" size="sm">Pattern Analysis</Badge>
-                    <Badge variant="outline" size="sm">ML Predictions</Badge>
-                    <Badge variant="outline" size="sm">Risk Assessment</Badge>
-                    <Badge variant="outline" size="sm">Confidence Scores</Badge>
-                    <Badge variant="outline" size="sm">Buy/Hold/Sell Signals</Badge>
+                    <Badge variant="outline" size="sm">テクニカル指標</Badge>
+                    <Badge variant="outline" size="sm">パターン分析</Badge>
+                    <Badge variant="outline" size="sm">機械学習予測</Badge>
+                    <Badge variant="outline" size="sm">リスク評価</Badge>
+                    <Badge variant="outline" size="sm">信頼度スコア</Badge>
+                    <Badge variant="outline" size="sm">売買シグナル</Badge>
                 </div>
             </div>
         </Card>

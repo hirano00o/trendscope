@@ -26,28 +26,28 @@ export function HeroSection() {
 
     const features = [
         {
-            title: "Technical Analysis",
-            description: "Advanced indicators including SMA, EMA, RSI, MACD, and Bollinger Bands",
+            title: "テクニカル分析",
+            description: "SMA、EMA、RSI、MACD、ボリンジャーバンドを含む高度な指標",
             icon: "📈",
         },
         {
-            title: "Pattern Recognition",
-            description: "Candlestick patterns and support/resistance level detection",
+            title: "パターン認識",
+            description: "ローソク足パターンとサポート/レジスタンスレベルの検出",
             icon: "🔍",
         },
         {
-            title: "ML Predictions",
-            description: "Ensemble machine learning models for price forecasting",
+            title: "機械学習予測",
+            description: "価格予測のためのアンサンブル機械学習モデル",
             icon: "🤖",
         },
         {
-            title: "Risk Assessment",
-            description: "Comprehensive volatility analysis and risk evaluation",
+            title: "リスク評価",
+            description: "包括的なボラティリティ分析とリスク評価",
             icon: "⚖️",
         },
         {
-            title: "Integrated Scoring",
-            description: "6-category analysis with confidence-weighted recommendations",
+            title: "統合スコアリング",
+            description: "信頼度加重による推奨を含む6カテゴリー分析",
             icon: "🎯",
         },
     ]
@@ -78,16 +78,16 @@ export function HeroSection() {
                 <div className="mx-auto max-w-4xl text-center">
                     {/* Main heading */}
                     <h1 className="text-4xl font-bold tracking-tight text-neutral-900 sm:text-6xl lg:text-7xl">
-                        Advanced Stock
+                        高度な株価
                         <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-success-600">
-                            Trend Analysis
+                            トレンド分析
                         </span>
                     </h1>
 
                     {/* Subtitle */}
                     <p className="mt-6 text-lg leading-8 text-neutral-600 sm:text-xl max-w-2xl mx-auto">
-                        Harness the power of 6 analysis methods to predict stock price movements 
-                        with confidence-weighted probability scores and comprehensive risk assessment.
+                        6つの分析手法の力を活用し、信頼度加重の確率スコアと包括的なリスク評価で
+                        株価の動向を予測します。
                     </p>
 
                     {/* Feature showcase */}
@@ -127,19 +127,19 @@ export function HeroSection() {
                         <div className="text-center">
                             <div className="text-3xl font-bold text-primary-600">6</div>
                             <div className="text-sm font-medium text-neutral-600 mt-1">
-                                Analysis Categories
+                                分析カテゴリー
                             </div>
                         </div>
                         <div className="text-center">
                             <div className="text-3xl font-bold text-success-600">95%</div>
                             <div className="text-sm font-medium text-neutral-600 mt-1">
-                                Prediction Accuracy
+                                予測精度
                             </div>
                         </div>
                         <div className="text-center">
-                            <div className="text-3xl font-bold text-warning-600">Real-time</div>
+                            <div className="text-3xl font-bold text-warning-600">リアルタイム</div>
                             <div className="text-sm font-medium text-neutral-600 mt-1">
-                                Market Analysis
+                                マーケット分析
                             </div>
                         </div>
                     </div>
@@ -147,10 +147,10 @@ export function HeroSection() {
                     {/* Call to action */}
                     <div className="mt-16 text-center">
                         <p className="text-lg font-medium text-neutral-700 mb-4">
-                            Ready to analyze your next investment?
+                            次の投資分析を始める準備はできましたか？
                         </p>
                         <div className="text-sm text-neutral-500">
-                            Enter a stock symbol below to get started
+                            下記に株式コードを入力して開始してください
                         </div>
                     </div>
                 </div>

@@ -52,16 +52,16 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle className="text-2xl">{symbol} Analysis</CardTitle>
+                            <CardTitle className="text-2xl">{symbol} 分析</CardTitle>
                             <p className="text-neutral-600 mt-1">
-                                Current Price: {formatPrice(current_price)}
+                                現在価格: {formatPrice(current_price)}
                             </p>
                         </div>
                         <div className="text-right">
                             <div className="text-3xl font-bold text-primary-600">
                                 {Math.round(integrated_score.overall_score * 100)}
                             </div>
-                            <div className="text-sm text-neutral-600">Overall Score</div>
+                            <div className="text-sm text-neutral-600">総合スコア</div>
                         </div>
                     </div>
                 </CardHeader>
@@ -77,9 +77,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                 }
                                 size="lg"
                             >
-                                {integrated_score.recommendation}
+                                {integrated_score.recommendation === "BUY" ? "買い" :
+                                 integrated_score.recommendation === "SELL" ? "売り" :
+                                 "保有"}
                             </SignalBadge>
-                            <p className="text-sm text-neutral-600 mt-2">Recommendation</p>
+                            <p className="text-sm text-neutral-600 mt-2">推奨</p>
                         </div>
 
                         {/* Confidence Level */}
@@ -98,7 +100,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                 risk={integrated_score.risk_assessment.toLowerCase() as "low" | "moderate" | "high"}
                                 size="lg"
                             />
-                            <p className="text-sm text-neutral-600 mt-2">Risk Level</p>
+                            <p className="text-sm text-neutral-600 mt-2">リスクレベル</p>
                         </div>
                     </div>
                 </CardContent>
@@ -145,13 +147,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 {/* Technical Analysis */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Technical Analysis</CardTitle>
+                        <CardTitle>テクニカル分析</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
                             {/* Overall Signal */}
                             <div className="flex items-center justify-between">
-                                <span className="font-medium">Overall Signal:</span>
+                                <span className="font-medium">総合シグナル:</span>
                                 <SignalBadge 
                                     signal={technical_analysis.overall_signal as any}
                                     strength={technical_analysis.signal_strength}
@@ -160,7 +162,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
                             {/* Technical Indicators */}
                             <div className="space-y-3">
-                                <h4 className="font-medium text-neutral-700">Key Indicators</h4>
+                                <h4 className="font-medium text-neutral-700">主要指標</h4>
                                 
                                 {technical_analysis.indicators.rsi && (
                                     <div className="flex items-center justify-between">
@@ -177,9 +179,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                                 }
                                                 size="sm"
                                             >
-                                                {technical_analysis.indicators.rsi > 70 ? "Overbought" :
-                                                 technical_analysis.indicators.rsi < 30 ? "Oversold" :
-                                                 "Neutral"}
+                                                {technical_analysis.indicators.rsi > 70 ? "買われ過ぎ" :
+                                                 technical_analysis.indicators.rsi < 30 ? "売られ過ぎ" :
+                                                 "中立"}
                                             </Badge>
                                         </div>
                                     </div>
@@ -196,7 +198,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                                 variant={technical_analysis.indicators.macd > technical_analysis.indicators.macd_signal ? "success" : "warning"}
                                                 size="sm"
                                             >
-                                                {technical_analysis.indicators.macd > technical_analysis.indicators.macd_signal ? "Bullish" : "Bearish"}
+                                                {technical_analysis.indicators.macd > technical_analysis.indicators.macd_signal ? "強気" : "弱気"}
                                             </Badge>
                                         </div>
                                     </div>
@@ -205,12 +207,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                 {/* Moving Averages */}
                                 {technical_analysis.indicators.sma_20 && technical_analysis.indicators.sma_50 && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm">SMA Cross:</span>
+                                        <span className="text-sm">SMAクロス:</span>
                                         <Badge 
                                             variant={technical_analysis.indicators.sma_20 > technical_analysis.indicators.sma_50 ? "success" : "warning"}
                                             size="sm"
                                         >
-                                            {technical_analysis.indicators.sma_20 > technical_analysis.indicators.sma_50 ? "Bullish" : "Bearish"}
+                                            {technical_analysis.indicators.sma_20 > technical_analysis.indicators.sma_50 ? "強気" : "弱気"}
                                         </Badge>
                                     </div>
                                 )}
@@ -229,13 +231,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 {/* Pattern Analysis */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Pattern Analysis</CardTitle>
+                        <CardTitle>パターン分析</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
                             {/* Overall Pattern Signal */}
                             <div className="flex items-center justify-between">
-                                <span className="font-medium">Pattern Signal:</span>
+                                <span className="font-medium">パターンシグナル:</span>
                                 <SignalBadge 
                                     signal={pattern_analysis.overall_signal.toLowerCase().replace("_", "-") as any}
                                     strength={pattern_analysis.signal_strength}
@@ -245,7 +247,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             {/* Pattern Score */}
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium">Pattern Score</span>
+                                    <span className="text-sm font-medium">パターンスコア</span>
                                     <span className="text-sm">{Math.round(pattern_analysis.pattern_score * 100)}%</span>
                                 </div>
                                 <Progress 
@@ -257,7 +259,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             {/* Detected Patterns */}
                             <div>
                                 <h4 className="font-medium text-neutral-700 mb-2">
-                                    Detected Patterns ({pattern_analysis.patterns.length})
+                                    検出されたパターン ({pattern_analysis.patterns.length})
                                 </h4>
                                 <div className="space-y-2 max-h-32 overflow-y-auto">
                                     {pattern_analysis.patterns.slice(0, 3).map((pattern, index) => (
@@ -292,13 +294,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 {/* Volatility Analysis */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Volatility Analysis</CardTitle>
+                        <CardTitle>ボラティリティ分析</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
                             {/* Volatility Regime */}
                             <div className="flex items-center justify-between">
-                                <span className="font-medium">Volatility Regime:</span>
+                                <span className="font-medium">ボラティリティ状況:</span>
                                 <Badge 
                                     variant={
                                         volatility_analysis.regime === "LOW" ? "success" :
@@ -321,7 +323,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             {/* Breakout Probability */}
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium">Breakout Probability</span>
+                                    <span className="text-sm font-medium">ブレイクアウト確率</span>
                                     <span className="text-sm">{Math.round(volatility_analysis.breakout_probability * 100)}%</span>
                                 </div>
                                 <Progress 
@@ -348,7 +350,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 {/* ML Predictions */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>ML Predictions</CardTitle>
+                        <CardTitle>機械学習予測</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -357,16 +359,16 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                 <div className="text-2xl font-bold text-primary-700">
                                     {formatPrice(ml_analysis.price_target)}
                                 </div>
-                                <div className="text-sm text-primary-600">Target Price</div>
+                                <div className="text-sm text-primary-600">目標株価</div>
                                 <div className="text-xs text-neutral-600 mt-1">
-                                    {((ml_analysis.price_target - current_price) / current_price * 100).toFixed(1)}% from current
+                                    現在価格から{((ml_analysis.price_target - current_price) / current_price * 100).toFixed(1)}%
                                 </div>
                             </div>
 
                             {/* Consensus Score */}
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium">Model Consensus</span>
+                                    <span className="text-sm font-medium">モデル合意度</span>
                                     <span className="text-sm">{Math.round(ml_analysis.consensus_score * 100)}%</span>
                                 </div>
                                 <Progress 
@@ -377,7 +379,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
                             {/* Trend Direction */}
                             <div className="flex items-center justify-between">
-                                <span className="font-medium">Trend Direction:</span>
+                                <span className="font-medium">トレンド方向:</span>
                                 <Badge 
                                     variant={
                                         ml_analysis.trend_direction === "up" ? "success" :
@@ -385,13 +387,14 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                         "secondary"
                                     }
                                 >
-                                    {ml_analysis.trend_direction.toUpperCase()}
+                                    {ml_analysis.trend_direction === "up" ? "上昇" :
+                                     ml_analysis.trend_direction === "down" ? "下降" : "横ばい"}
                                 </Badge>
                             </div>
 
                             {/* Model Performance */}
                             <div>
-                                <h4 className="font-medium text-neutral-700 mb-2">Model Performance</h4>
+                                <h4 className="font-medium text-neutral-700 mb-2">モデル性能</h4>
                                 <div className="space-y-1">
                                     {Object.entries(ml_analysis.model_performance).map(([model, accuracy]) => (
                                         <div key={model} className="flex items-center justify-between text-sm">
@@ -409,27 +412,27 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             {/* Analysis Metadata */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Analysis Details</CardTitle>
+                    <CardTitle>分析詳細</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
-                            <div className="font-medium text-neutral-700">Data Points</div>
+                            <div className="font-medium text-neutral-700">データポイント</div>
                             <div className="text-neutral-600">{analysis_metadata.data_points_used}</div>
                         </div>
                         <div>
-                            <div className="font-medium text-neutral-700">Data Quality</div>
+                            <div className="font-medium text-neutral-700">データ品質</div>
                             <div className="text-neutral-600">{Math.round(analysis_metadata.data_quality_score * 100)}%</div>
                         </div>
                         <div>
-                            <div className="font-medium text-neutral-700">Analysis Time</div>
+                            <div className="font-medium text-neutral-700">分析時刻</div>
                             <div className="text-neutral-600">
-                                {new Date(analysis_metadata.analysis_timestamp).toLocaleTimeString()}
+                                {new Date(analysis_metadata.analysis_timestamp).toLocaleTimeString('ja-JP')}
                             </div>
                         </div>
                         <div>
-                            <div className="font-medium text-neutral-700">Confidence Factors</div>
-                            <div className="text-neutral-600">{analysis_metadata.confidence_factors.length} factors</div>
+                            <div className="font-medium text-neutral-700">信頼度要因</div>
+                            <div className="text-neutral-600">{analysis_metadata.confidence_factors.length} 要因</div>
                         </div>
                     </div>
                 </CardContent>

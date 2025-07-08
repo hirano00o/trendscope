@@ -182,13 +182,13 @@ class IntegratedScoringEngine:
             Pattern score: 0.72
         """
         # Use the pattern score directly
-        score = pattern_result.pattern_score
+        score = float(pattern_result.pattern_score)
         
         # Calculate confidence based on signal strength and pattern count
-        confidence = pattern_result.signal_strength
+        confidence = float(pattern_result.signal_strength)
         if len(pattern_result.patterns) > 3:
-            confidence += Decimal("0.1")  # Bonus for multiple patterns
-        confidence = min(confidence, Decimal("0.95"))
+            confidence += 0.1  # Bonus for multiple patterns
+        confidence = min(confidence, 0.95)
         
         # Create detailed breakdown
         details = {
@@ -278,39 +278,39 @@ class IntegratedScoringEngine:
             ML score: 0.68
         """
         # Calculate score based on trend direction and prediction confidence
-        current_price = Decimal("100")  # This should be passed from actual current price
-        predicted_price = ml_result.price_target
+        current_price = 100.0  # This should be passed from actual current price
+        predicted_price = float(ml_result.price_target)
         
         # Calculate percentage change
         if current_price > 0:
             price_change_pct = (predicted_price - current_price) / current_price
         else:
-            price_change_pct = Decimal("0")
+            price_change_pct = 0.0
         
         # Convert price change to score (0.5 = no change, >0.5 = bullish, <0.5 = bearish)
-        if price_change_pct > Decimal("0.05"):  # > 5% increase
-            score = Decimal("0.8")
-        elif price_change_pct > Decimal("0.02"):  # > 2% increase
-            score = Decimal("0.65")
-        elif price_change_pct > Decimal("-0.02"):  # Between -2% and +2%
-            score = Decimal("0.5")
-        elif price_change_pct > Decimal("-0.05"):  # > -5% decrease
-            score = Decimal("0.35")
+        if price_change_pct > 0.05:  # > 5% increase
+            score = 0.8
+        elif price_change_pct > 0.02:  # > 2% increase
+            score = 0.65
+        elif price_change_pct > -0.02:  # Between -2% and +2%
+            score = 0.5
+        elif price_change_pct > -0.05:  # > -5% decrease
+            score = 0.35
         else:  # < -5% decrease
-            score = Decimal("0.2")
+            score = 0.2
         
         # Adjust score based on consensus
-        consensus_adjustment = (ml_result.consensus_score - Decimal("0.5")) * Decimal("0.2")
+        consensus_adjustment = (float(ml_result.consensus_score) - 0.5) * 0.2
         score += consensus_adjustment
-        score = max(Decimal("0.0"), min(Decimal("1.0"), score))
+        score = max(0.0, min(1.0, float(score)))
         
         # Use ensemble prediction confidence
-        confidence = ml_result.ensemble_prediction.confidence
+        confidence = float(ml_result.ensemble_prediction.confidence)
         
         # Boost confidence if multiple models agree
-        if ml_result.consensus_score > Decimal("0.8"):
-            confidence += Decimal("0.1")
-        confidence = min(confidence, Decimal("0.95"))
+        if float(ml_result.consensus_score) > 0.8:
+            confidence += 0.1
+        confidence = min(confidence, 0.95)
         
         # Create detailed breakdown
         details = {
@@ -429,13 +429,13 @@ class IntegratedScoringEngine:
             raise ValueError("Total weight cannot be zero")
         
         # Calculate weighted average score
-        weighted_sum = Decimal("0")
-        confidence_weighted_sum = Decimal("0")
+        weighted_sum = 0.0
+        confidence_weighted_sum = 0.0
         
         for score in category_scores:
-            normalized_weight = score.weight / total_weight
-            weighted_sum += score.score * normalized_weight
-            confidence_weighted_sum += score.confidence * normalized_weight
+            normalized_weight = float(score.weight) / float(total_weight)
+            weighted_sum += float(score.score) * normalized_weight
+            confidence_weighted_sum += float(score.confidence) * normalized_weight
         
         overall_score = weighted_sum
         overall_confidence = confidence_weighted_sum
@@ -510,7 +510,7 @@ class IntegratedScoringEngine:
         
         return details
     
-    def _calculate_consensus_factor(self, category_scores: List[CategoryScore]) -> Decimal:
+    def _calculate_consensus_factor(self, category_scores: List[CategoryScore]) -> float:
         """Calculate consensus factor based on agreement between categories.
         
         Args:
@@ -520,21 +520,21 @@ class IntegratedScoringEngine:
             Consensus factor (0.5 to 1.0) where 1.0 means perfect agreement
         """
         if len(category_scores) < 2:
-            return Decimal("1.0")
+            return 1.0
         
         # Calculate variance in scores
-        scores = [score.score for score in category_scores]
+        scores = [float(score.score) for score in category_scores]
         mean_score = sum(scores) / len(scores)
         variance = sum((score - mean_score) ** 2 for score in scores) / len(scores)
         
         # Convert variance to consensus factor (lower variance = higher consensus)
         # Variance of 0 = consensus 1.0, variance of 0.25 = consensus 0.5
-        max_variance = Decimal("0.25")
-        consensus = max(Decimal("0.5"), Decimal("1.0") - (variance / max_variance))
+        max_variance = 0.25
+        consensus = max(0.5, 1.0 - (variance / max_variance))
         
-        return min(consensus, Decimal("1.0"))
+        return min(consensus, 1.0)
     
-    def _generate_recommendation(self, score: Decimal, confidence: Decimal) -> str:
+    def _generate_recommendation(self, score: float, confidence: float) -> str:
         """Generate investment recommendation based on score and confidence.
         
         Args:
@@ -545,15 +545,15 @@ class IntegratedScoringEngine:
             Recommendation string: "BUY", "HOLD", or "SELL"
         """
         # Adjust thresholds based on confidence
-        if confidence >= Decimal("0.8"):
-            buy_threshold = Decimal("0.6")
-            sell_threshold = Decimal("0.4")
-        elif confidence >= Decimal("0.6"):
-            buy_threshold = Decimal("0.65")
-            sell_threshold = Decimal("0.35")
+        if confidence >= 0.8:
+            buy_threshold = 0.6
+            sell_threshold = 0.4
+        elif confidence >= 0.6:
+            buy_threshold = 0.65
+            sell_threshold = 0.35
         else:
-            buy_threshold = Decimal("0.7")
-            sell_threshold = Decimal("0.3")
+            buy_threshold = 0.7
+            sell_threshold = 0.3
         
         if score >= buy_threshold:
             return "BUY"
@@ -573,20 +573,20 @@ class IntegratedScoringEngine:
             Risk assessment string: "LOW", "MODERATE", or "HIGH"
         """
         # Calculate average confidence
-        avg_confidence = sum(score.confidence for score in category_scores) / len(category_scores)
+        avg_confidence = sum(float(score.confidence) for score in category_scores) / len(category_scores)
         
         # Calculate score volatility
-        scores = [score.score for score in category_scores]
+        scores = [float(score.score) for score in category_scores]
         if len(scores) > 1:
             mean_score = sum(scores) / len(scores)
-            score_volatility = (sum((score - mean_score) ** 2 for score in scores) / len(scores)) ** Decimal("0.5")
+            score_volatility = (sum((score - mean_score) ** 2 for score in scores) / len(scores)) ** 0.5
         else:
-            score_volatility = Decimal("0")
+            score_volatility = 0.0
         
         # Assess risk based on confidence and volatility
-        if avg_confidence >= Decimal("0.8") and score_volatility <= Decimal("0.1"):
+        if avg_confidence >= 0.8 and score_volatility <= 0.1:
             return "LOW"
-        elif avg_confidence >= Decimal("0.6") and score_volatility <= Decimal("0.2"):
+        elif avg_confidence >= 0.6 and score_volatility <= 0.2:
             return "MODERATE"
         else:
             return "HIGH"
