@@ -9,6 +9,8 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
+import { Tooltip } from "./tooltip"
+import { getMetricExplanation, formatExplanationForTooltip } from "@/lib/metrics-explanations"
 
 const cardVariants = cva("rounded-lg border bg-white text-neutral-950 shadow-sm", {
     variants: {
@@ -132,6 +134,15 @@ export interface MetricCardProps extends CardProps {
     status?: "positive" | "negative" | "neutral"
     description?: string
     icon?: React.ReactNode
+    /** Tooltip configuration for metric explanation */
+    tooltip?:
+        | {
+              category: "technical" | "pattern" | "volatility" | "ml" | "integrated" | "category"
+              metricKey: string
+          }
+        | {
+              content: string
+          }
 }
 
 /**
@@ -152,7 +163,7 @@ export interface MetricCardProps extends CardProps {
  * ```
  */
 const MetricCard = React.forwardRef<HTMLDivElement, MetricCardProps>(
-    ({ title, value, change, status, description, icon, className, ...props }, ref) => {
+    ({ title, value, change, status, description, icon, tooltip, className, ...props }, ref) => {
         const getStatusVariant = () => {
             if (status === "positive") return "success"
             if (status === "negative") return "danger"
@@ -165,7 +176,18 @@ const MetricCard = React.forwardRef<HTMLDivElement, MetricCardProps>(
             return "text-neutral-600"
         }
 
-        return (
+        const getTooltipContent = () => {
+            if (!tooltip) return null
+
+            if ("content" in tooltip) {
+                return tooltip.content
+            }
+
+            const explanation = getMetricExplanation(tooltip.category, tooltip.metricKey)
+            return explanation ? formatExplanationForTooltip(explanation) : null
+        }
+
+        const cardContent = (
             <Card ref={ref} variant={getStatusVariant()} className={cn("", className)} {...props}>
                 <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -191,6 +213,18 @@ const MetricCard = React.forwardRef<HTMLDivElement, MetricCardProps>(
                     </div>
                 </div>
             </Card>
+        )
+
+        const tooltipContent = getTooltipContent()
+
+        if (!tooltipContent) {
+            return cardContent
+        }
+
+        return (
+            <Tooltip content={<div className="max-w-xs text-xs whitespace-pre-line">{tooltipContent}</div>}>
+                {cardContent}
+            </Tooltip>
         )
     },
 )

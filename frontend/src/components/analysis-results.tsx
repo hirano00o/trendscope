@@ -11,6 +11,7 @@
 import { Card, CardHeader, CardTitle, CardContent, MetricCard } from "@/components/ui/card"
 import { Badge, SignalBadge, RiskBadge } from "@/components/ui/badge"
 import { Progress, ConfidenceProgress } from "@/components/ui/progress"
+import { Tooltip } from "@/components/ui/tooltip"
 import {
     PriceChart,
     TechnicalIndicatorChart,
@@ -18,8 +19,8 @@ import {
     PatternChart,
     createMockHistoricalData,
 } from "@/components/charts"
-import { cn, formatPrice, formatPercentage, getColorClass } from "@/lib/utils"
-import { AnalysisResultsProps } from "@/types/analysis"
+import { cn, formatPrice, formatPercentage } from "@/lib/utils"
+import type { AnalysisResultsProps } from "@/types/analysis"
 
 /**
  * Main analysis results component
@@ -40,7 +41,6 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
         pattern_analysis,
         volatility_analysis,
         ml_analysis,
-        fundamental_analysis,
         integrated_score,
         analysis_metadata,
     } = data
@@ -56,10 +56,30 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             <p className="text-neutral-600 mt-1">現在価格: {formatPrice(current_price)}</p>
                         </div>
                         <div className="text-right">
-                            <div className="text-3xl font-bold text-primary-600">
-                                {Math.round(integrated_score.overall_score * 100)}
-                            </div>
-                            <div className="text-sm text-neutral-600">総合スコア</div>
+                            <Tooltip
+                                content={
+                                    <div className="max-w-xs text-xs whitespace-pre-line">
+                                        {`総合スコア
+範囲: 0〜100
+
+6つの分析カテゴリーを統合して算出された、総合的な投資魅力度スコアです。
+
+投資判断:
+70以上: 強い買いシグナル
+30未満: 強い売りシグナル
+30〜70: 中立
+
+注意: 全ての分析手法を総合した最終判断です。ただし、個別要因も必ず確認してください。`}
+                                    </div>
+                                }
+                            >
+                                <div className="cursor-help">
+                                    <div className="text-3xl font-bold text-primary-600">
+                                        {Math.round(integrated_score.overall_score * 100)}
+                                    </div>
+                                    <div className="text-sm text-neutral-600">総合スコア</div>
+                                </div>
+                            </Tooltip>
                         </div>
                     </div>
                 </CardHeader>
@@ -88,12 +108,32 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
                         {/* Confidence Level */}
                         <div>
-                            <ConfidenceProgress
-                                confidence={integrated_score.confidence_level}
-                                showLabel
-                                labelPosition="top"
-                                size="lg"
-                            />
+                            <Tooltip
+                                content={
+                                    <div className="max-w-xs text-xs whitespace-pre-line">
+                                        {`信頼度
+範囲: 0〜100%
+
+分析結果に対する統計的な信頼性の度合いを示します。
+
+投資判断:
+80%以上: 高信頼
+50%未満: 低信頼
+50〜80%: 中信頼
+
+注意: 信頼度が低い場合は、追加情報の収集や慎重な判断が推奨されます。`}
+                                    </div>
+                                }
+                            >
+                                <div className="cursor-help">
+                                    <ConfidenceProgress
+                                        confidence={integrated_score.confidence_level}
+                                        showLabel
+                                        labelPosition="top"
+                                        size="lg"
+                                    />
+                                </div>
+                            </Tooltip>
                         </div>
 
                         {/* Risk Assessment */}
@@ -142,6 +182,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             categoryScore.score > 0.6 ? "positive" : categoryScore.score < 0.4 ? "negative" : "neutral"
                         }
                         description={`Weight: ${formatPercentage(categoryScore.weight)}`}
+                        tooltip={{
+                            category: "category",
+                            metricKey: categoryScore.category.toLowerCase(),
+                        }}
                     />
                 ))}
             </div>
@@ -170,7 +214,25 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
                                 {technical_analysis.indicators.rsi && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm">RSI (14):</span>
+                                        <Tooltip
+                                            content={
+                                                <div className="max-w-xs text-xs whitespace-pre-line">
+                                                    {`RSI (相対力指数)
+範囲: 0〜100
+
+株価の上昇圧力と下降圧力を比較し、買われ過ぎ・売られ過ぎを判定する指標です。
+
+投資判断:
+70以上: 買われ過ぎ（売り検討）
+30以下: 売られ過ぎ（買い検討）
+30〜70: 正常範囲
+
+注意: 単独では判断せず、他の指標と組み合わせて使用することが重要です。`}
+                                                </div>
+                                            }
+                                        >
+                                            <span className="text-sm cursor-help">RSI (14):</span>
+                                        </Tooltip>
                                         <div className="flex items-center space-x-2">
                                             <span className="text-sm font-medium">
                                                 {technical_analysis.indicators.rsi.toFixed(1)}
@@ -197,7 +259,24 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
                                 {technical_analysis.indicators.macd && technical_analysis.indicators.macd_signal && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm">MACD:</span>
+                                        <Tooltip
+                                            content={
+                                                <div className="max-w-xs text-xs whitespace-pre-line">
+                                                    {`MACD (移動平均収束拡散手法)
+範囲: 制限なし（正負の値）
+
+2つの移動平均線の差とその移動平均を用いて、トレンドの変化を捉える指標です。
+
+投資判断:
+MACDがシグナル線を上抜け: 買いシグナル
+MACDがシグナル線を下抜け: 売りシグナル
+
+注意: トレンド相場で威力を発揮しますが、横ばい相場では偽シグナルが多くなります。`}
+                                                </div>
+                                            }
+                                        >
+                                            <span className="text-sm cursor-help">MACD:</span>
+                                        </Tooltip>
                                         <div className="flex items-center space-x-2">
                                             <span className="text-sm font-medium">
                                                 {technical_analysis.indicators.macd.toFixed(3)}
@@ -223,7 +302,24 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                 {/* Moving Averages */}
                                 {technical_analysis.indicators.sma_20 && technical_analysis.indicators.sma_50 && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm">SMAクロス:</span>
+                                        <Tooltip
+                                            content={
+                                                <div className="max-w-xs text-xs whitespace-pre-line">
+                                                    {`SMAクロス (単純移動平均クロス)
+範囲: 強気/弱気/中立
+
+短期移動平均線と長期移動平均線の位置関係で、トレンドの方向性を判定します。
+
+投資判断:
+短期SMA > 長期SMA: 強気（上昇トレンド）
+短期SMA < 長期SMA: 弱気（下降トレンド）
+
+注意: トレンド系指標のため、レンジ相場では効果が限定的です。`}
+                                                </div>
+                                            }
+                                        >
+                                            <span className="text-sm cursor-help">SMAクロス:</span>
+                                        </Tooltip>
                                         <Badge
                                             variant={
                                                 technical_analysis.indicators.sma_20 >
@@ -270,7 +366,25 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             {/* Pattern Score */}
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium">パターンスコア</span>
+                                    <Tooltip
+                                        content={
+                                            <div className="max-w-xs text-xs whitespace-pre-line">
+                                                {`パターンスコア
+範囲: 0〜100%
+
+検出されたテクニカルパターンの信頼性と強さを総合的に評価したスコアです。
+
+投資判断:
+60%以上: 強いパターンシグナル
+40%未満: 弱いパターンシグナル
+40〜60%: 中程度
+
+注意: 複数のパターンが同時に検出されると、スコアが高くなる傾向があります。`}
+                                            </div>
+                                        }
+                                    >
+                                        <span className="text-sm font-medium cursor-help">パターンスコア</span>
+                                    </Tooltip>
                                     <span className="text-sm">{Math.round(pattern_analysis.pattern_score * 100)}%</span>
                                 </div>
                                 <Progress
@@ -348,7 +462,25 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
                             {/* ATR */}
                             <div className="flex items-center justify-between">
-                                <span className="text-sm">ATR (%):</span>
+                                <Tooltip
+                                    content={
+                                        <div className="max-w-xs text-xs whitespace-pre-line">
+                                            {`ATR% (平均真の値幅率)
+範囲: 0%〜（上限なし）
+
+過去一定期間の価格変動幅の平均を現在価格で割ったもので、ボラティリティの大きさを示します。
+
+投資判断:
+3%未満: 低ボラティリティ
+3〜7%: 中程度
+7%以上: 高ボラティリティ
+
+注意: 高ボラティリティ時は利益機会が大きいが、リスクも高くなります。`}
+                                        </div>
+                                    }
+                                >
+                                    <span className="text-sm cursor-help">ATR (%):</span>
+                                </Tooltip>
                                 <span className="text-sm font-medium">
                                     {volatility_analysis.metrics.atr_percentage.toFixed(2)}%
                                 </span>
@@ -357,7 +489,25 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             {/* Breakout Probability */}
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium">ブレイクアウト確率</span>
+                                    <Tooltip
+                                        content={
+                                            <div className="max-w-xs text-xs whitespace-pre-line">
+                                                {`ブレイクアウト確率
+範囲: 0〜100%
+
+現在の価格が重要なサポート・レジスタンスラインを突破する可能性を示します。
+
+投資判断:
+70%以上: ブレイクアウト可能性高
+30%未満: レンジ継続可能性高
+30〜70%: 不確実
+
+注意: ブレイクアウト後は大きな価格変動が予想されるため、ポジション管理に注意が必要です。`}
+                                            </div>
+                                        }
+                                    >
+                                        <span className="text-sm font-medium cursor-help">ブレイクアウト確率</span>
+                                    </Tooltip>
                                     <span className="text-sm">
                                         {Math.round(volatility_analysis.breakout_probability * 100)}%
                                     </span>
@@ -387,21 +537,59 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <CardContent>
                         <div className="space-y-4">
                             {/* Price Target */}
-                            <div className="text-center p-4 bg-primary-50 rounded-lg">
-                                <div className="text-2xl font-bold text-primary-700">
-                                    {formatPrice(ml_analysis.price_target)}
+                            <Tooltip
+                                content={
+                                    <div className="max-w-xs text-xs whitespace-pre-line">
+                                        {`目標株価
+範囲: 現在価格の±30%程度
+
+機械学習モデルが予測する将来の株価水準です。複数モデルのアンサンブル予測です。
+
+投資判断:
+現在価格より高い: 上昇期待
+現在価格より低い: 下落リスク
+
+注意: 予測期間は通常1〜3ヶ月程度です。マクロ経済要因は考慮されていません。`}
+                                    </div>
+                                }
+                            >
+                                <div className="text-center p-4 bg-primary-50 rounded-lg cursor-help">
+                                    <div className="text-2xl font-bold text-primary-700">
+                                        {formatPrice(ml_analysis.price_target)}
+                                    </div>
+                                    <div className="text-sm text-primary-600">目標株価</div>
+                                    <div className="text-xs text-neutral-600 mt-1">
+                                        現在価格から
+                                        {(((ml_analysis.price_target - current_price) / current_price) * 100).toFixed(
+                                            1,
+                                        )}
+                                        %
+                                    </div>
                                 </div>
-                                <div className="text-sm text-primary-600">目標株価</div>
-                                <div className="text-xs text-neutral-600 mt-1">
-                                    現在価格から
-                                    {(((ml_analysis.price_target - current_price) / current_price) * 100).toFixed(1)}%
-                                </div>
-                            </div>
+                            </Tooltip>
 
                             {/* Consensus Score */}
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium">モデル合意度</span>
+                                    <Tooltip
+                                        content={
+                                            <div className="max-w-xs text-xs whitespace-pre-line">
+                                                {`モデル合意度
+範囲: 0〜100%
+
+複数の機械学習モデルの予測結果がどの程度一致しているかを示す指標です。
+
+投資判断:
+80%以上: 高い信頼性
+50%未満: 低い信頼性
+50〜80%: 中程度の信頼性
+
+注意: 合意度が高いほど予測の確実性が高いと考えられますが、市場の急変には注意が必要です。`}
+                                            </div>
+                                        }
+                                    >
+                                        <span className="text-sm font-medium cursor-help">モデル合意度</span>
+                                    </Tooltip>
                                     <span className="text-sm">{Math.round(ml_analysis.consensus_score * 100)}%</span>
                                 </div>
                                 <Progress value={ml_analysis.consensus_score * 100} variant="default" />
