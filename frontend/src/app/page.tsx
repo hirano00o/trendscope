@@ -12,8 +12,7 @@ import { useState } from "react"
 import { StockAnalysisForm } from "@/components/stock-analysis-form"
 import { AnalysisResults } from "@/components/analysis-results"
 import { HeroSection } from "@/components/hero-section"
-import { useComprehensiveAnalysis } from "@/hooks/use-analysis"
-import { type AnalysisData } from "@/types/analysis"
+import type { AnalysisData } from "@/types/analysis"
 
 /**
  * Main landing page component
@@ -71,7 +70,7 @@ export default function Page() {
             console.log(`✅ API response received:`, response_data)
 
             // Check if the response has the expected wrapper structure
-            if (response_data && response_data.success && response_data.data) {
+            if (response_data?.success && response_data.data) {
                 console.log(`🎯 Setting analysis data...`)
                 setAnalysisData(response_data.data)
             } else {
