@@ -171,7 +171,20 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 {integrated_score.category_scores.map((categoryScore) => (
                     <MetricCard
                         key={categoryScore.category}
-                        title={categoryScore.category.charAt(0).toUpperCase() + categoryScore.category.slice(1)}
+                        title={
+                            categoryScore.category === "technical"
+                                ? "テクニカル分析"
+                                : categoryScore.category === "pattern"
+                                  ? "パターン分析"
+                                  : categoryScore.category === "volatility"
+                                    ? "ボラティリティ分析"
+                                    : categoryScore.category === "ml"
+                                      ? "機械学習分析"
+                                      : categoryScore.category === "fundamental"
+                                        ? "ファンダメンタル分析"
+                                        : categoryScore.category.charAt(0).toUpperCase() +
+                                          categoryScore.category.slice(1)
+                        }
                         value={`${Math.round(categoryScore.score * 100)}/100`}
                         change={{
                             value: categoryScore.confidence * 100,
@@ -181,7 +194,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                         status={
                             categoryScore.score > 0.6 ? "positive" : categoryScore.score < 0.4 ? "negative" : "neutral"
                         }
-                        description={`Weight: ${formatPercentage(categoryScore.weight)}`}
+                        description={`重み: ${formatPercentage(categoryScore.weight)}`}
                         tooltip={{
                             category: "category",
                             metricKey: categoryScore.category.toLowerCase(),
@@ -436,6 +449,11 @@ MACDがシグナル線を下抜け: 売りシグナル
                                                 }
                                                 size="sm"
                                             >
+                                                {pattern.signal.includes("BULLISH")
+                                                    ? "強気"
+                                                    : pattern.signal.includes("BEARISH")
+                                                      ? "弱気"
+                                                      : "中立"}{" "}
                                                 {Math.round(pattern.confidence * 100)}%
                                             </Badge>
                                         </div>
@@ -474,7 +492,15 @@ MACDがシグナル線を下抜け: 売りシグナル
                                               : "warning"
                                     }
                                 >
-                                    {volatility_analysis.regime}
+                                    {volatility_analysis.regime === "LOW"
+                                        ? "低"
+                                        : volatility_analysis.regime === "MODERATE"
+                                          ? "中程度"
+                                          : volatility_analysis.regime === "HIGH"
+                                            ? "高"
+                                            : volatility_analysis.regime === "EXTREME"
+                                              ? "極高"
+                                              : volatility_analysis.regime}
                                 </Badge>
                             </div>
 
