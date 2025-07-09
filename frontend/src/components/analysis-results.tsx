@@ -356,7 +356,25 @@ MACDがシグナル線を下抜け: 売りシグナル
                         <div className="space-y-4">
                             {/* Overall Pattern Signal */}
                             <div className="flex items-center justify-between">
-                                <span className="font-medium">パターンシグナル:</span>
+                                <Tooltip
+                                    content={
+                                        <div className="max-w-xs text-xs whitespace-pre-line">
+                                            {`総合パターンシグナル
+範囲: 強気/弱気/中立
+
+検出されたすべてのパターンを総合して算出された売買シグナルです。
+
+投資判断:
+強気: 買い優勢
+弱気: 売り優勢
+中立: 様子見
+
+注意: 短期的な価格変動の予測に適していますが、中長期トレンドも考慮してください。`}
+                                        </div>
+                                    }
+                                >
+                                    <span className="font-medium cursor-help">パターンシグナル:</span>
+                                </Tooltip>
                                 <SignalBadge
                                     signal={pattern_analysis.overall_signal.toLowerCase().replace("_", "-") as any}
                                     strength={pattern_analysis.signal_strength}
