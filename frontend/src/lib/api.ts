@@ -6,7 +6,7 @@
  * Includes comprehensive analysis endpoints and error management.
  */
 
-import { AnalysisData, AnalysisResponse } from "@/types/analysis"
+import { AnalysisData, AnalysisResponse, HistoricalDataResponse, HistoricalApiResponse } from "@/types/analysis"
 
 /**
  * Base API configuration
@@ -195,6 +195,61 @@ export const analysisApi = {
     async getMLAnalysis(symbol: string) {
         const normalizedSymbol = symbol.trim().toUpperCase()
         return apiClient(`/api/v1/ml/${normalizedSymbol}`)
+    },
+
+    /**
+     * Gets historical stock price data (OHLCV) for chart display
+     *
+     * @param symbol - Stock symbol to get data for (e.g., "AAPL", "7203.T")
+     * @param period - Time period (optional, defaults to "1mo")
+     * @param startDate - Custom start date (optional)
+     * @param endDate - Custom end date (optional)
+     * @returns Promise resolving to historical price data
+     * @throws {ApiError} When data retrieval fails
+     *
+     * @example
+     * ```typescript
+     * const historical = await analysisApi.getHistoricalData("AAPL", "1mo")
+     * console.log(historical.historical_data.length) // Number of data points
+     * 
+     * const customRange = await analysisApi.getHistoricalData("AAPL", undefined, "2024-01-01", "2024-01-31")
+     * console.log(customRange.metadata.current_price)
+     * ```
+     */
+    async getHistoricalData(
+        symbol: string,
+        period?: string,
+        startDate?: string,
+        endDate?: string
+    ): Promise<HistoricalDataResponse> {
+        const normalizedSymbol = symbol.trim().toUpperCase()
+
+        if (!normalizedSymbol || normalizedSymbol.length === 0) {
+            throw new ApiError(400, "Stock symbol is required")
+        }
+
+        // Build query parameters
+        const params = new URLSearchParams()
+        if (period) {
+            params.append("period", period)
+        }
+        if (startDate) {
+            params.append("start_date", startDate)
+        }
+        if (endDate) {
+            params.append("end_date", endDate)
+        }
+
+        const queryString = params.toString()
+        const endpoint = `/api/v1/historical/${normalizedSymbol}${queryString ? `?${queryString}` : ""}`
+
+        const response = await apiClient<HistoricalApiResponse>(endpoint)
+
+        if (!response.success || !response.data) {
+            throw new ApiError(500, response.error?.message || "Historical data retrieval failed", response.error)
+        }
+
+        return response.data
     },
 
     /**

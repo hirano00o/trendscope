@@ -222,7 +222,8 @@ async def api_v1_root() -> dict[str, Any]:
         "endpoints": [
             "/api/v1/stock/{symbol}", 
             "/api/v1/analysis/{symbol}",
-            "/api/v1/comprehensive/{symbol}"
+            "/api/v1/comprehensive/{symbol}",
+            "/api/v1/historical/{symbol}"
         ],
     }
 
@@ -349,6 +350,115 @@ async def analyze_stock(
                     "symbol": symbol,
                 },
             ) from e
+
+
+# Historical data endpoint
+@app.get("/api/v1/historical/{symbol}", tags=["Historical Data"])
+async def get_historical_data_endpoint(
+    symbol: str,
+    period: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict[str, Any]:
+    """Get historical stock price data (OHLCV) for chart display.
+    
+    Retrieves historical stock price data from yfinance and formats it
+    for frontend chart consumption. Supports both predefined periods
+    and custom date ranges.
+    
+    Args:
+        symbol: Stock symbol to retrieve data for (e.g., 'AAPL', '7203.T')
+        period: Predefined time period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+        start_date: Custom start date (YYYY-MM-DD format)
+        end_date: Custom end date (required if start_date provided)
+        
+    Returns:
+        Dictionary containing historical OHLCV data and metadata
+        
+    Example:
+        GET /api/v1/historical/AAPL?period=1mo
+        {
+            "success": true,
+            "data": {
+                "symbol": "AAPL",
+                "period": "1mo",
+                "data_points": 22,
+                "start_date": "2023-12-15",
+                "end_date": "2024-01-15",
+                "historical_data": [
+                    {
+                        "date": "2023-12-15",
+                        "open": 150.25,
+                        "high": 152.75,
+                        "low": 149.50,
+                        "close": 151.80,
+                        "volume": 1234567
+                    },
+                    ...
+                ],
+                "metadata": {
+                    "current_price": 151.80,
+                    "price_change": 5.25,
+                    "price_change_percent": 3.58,
+                    "average_volume": 1234567,
+                    "data_quality": "high",
+                    "retrieved_at": "2024-01-15T10:30:00Z"
+                }
+            }
+        }
+    """
+    from trendscope_backend.api.historical_data import get_historical_data
+    from trendscope_backend.api.analysis import parse_date_string
+    
+    # Parse optional parameters
+    parsed_start_date = None
+    parsed_end_date = None
+    
+    try:
+        if start_date:
+            parsed_start_date = parse_date_string(start_date)
+        if end_date:
+            parsed_end_date = parse_date_string(end_date)
+        
+        # Get historical data
+        result = await get_historical_data(
+            symbol=symbol,
+            period=period,
+            start_date=parsed_start_date,
+            end_date=parsed_end_date,
+        )
+        
+        return result
+        
+    except ValueError as e:
+        # Handle date parsing errors specifically
+        error_msg = str(e)
+        logger.warning(f"Parameter validation error for historical data {symbol}: {e}")
+        
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Invalid Parameter",
+                "message": error_msg,
+                "symbol": symbol,
+            },
+        ) from e
+    except HTTPException:
+        # Re-raise HTTPException from historical_data module
+        raise
+    except Exception as e:
+        # Handle any other exceptions
+        error_msg = str(e)
+        logger.error(f"Unexpected error in historical data endpoint for {symbol}: {e}", exc_info=True)
+        
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Data Retrieval Error",
+                "message": "An error occurred while retrieving historical data",
+                "symbol": symbol,
+            },
+        ) from e
 
 
 # Comprehensive 6-category analysis endpoint

@@ -19,6 +19,7 @@ import {
     PatternChart,
     createMockHistoricalData,
 } from "@/components/charts"
+import { useHistoricalData } from "@/hooks/use-historical-data"
 import { cn, formatPrice, formatPercentage } from "@/lib/utils"
 import type { AnalysisResultsProps } from "@/types/analysis"
 
@@ -44,6 +45,16 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
         integrated_score,
         analysis_metadata,
     } = data
+
+    // Fetch historical data for price chart
+    const {
+        data: historicalData,
+        isLoading: isHistoricalLoading,
+        error: historicalError,
+    } = useHistoricalData(symbol, {
+        period: "1mo",
+        enabled: !!symbol,
+    })
 
     return (
         <div className="space-y-8">
@@ -149,22 +160,50 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             </Card>
 
             {/* Price Chart Section */}
-            <PriceChart
-                data={createMockHistoricalData(30, current_price)}
-                height={400}
-                showVolume={true}
-                timeRange="1M"
-                indicators={{
-                    sma: [
-                        { period: 20, color: "#10B981" },
-                        { period: 50, color: "#F59E0B" },
-                    ],
-                    bollinger: {
-                        show: technical_analysis.indicators.bollinger_upper !== undefined,
-                        color: "#8B5CF6",
-                    },
-                }}
-            />
+            {isHistoricalLoading ? (
+                <Card variant="elevated" size="lg">
+                    <CardContent className="flex items-center justify-center h-96">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                            <p className="text-neutral-600">株価チャートを読み込み中...</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : historicalError ? (
+                <Card variant="elevated" size="lg">
+                    <CardContent className="flex items-center justify-center h-96">
+                        <div className="text-center">
+                            <p className="text-danger-600 mb-2">株価データの取得に失敗しました</p>
+                            <p className="text-neutral-600 text-sm">
+                                {historicalError.message || "データを取得できませんでした"}
+                            </p>
+                            <p className="text-neutral-500 text-xs mt-2">
+                                モックデータを表示しています
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : (
+                <PriceChart
+                    data={
+                        historicalData?.historical_data || 
+                        createMockHistoricalData(30, current_price)
+                    }
+                    height={400}
+                    showVolume={true}
+                    timeRange="1M"
+                    indicators={{
+                        sma: [
+                            { period: 20, color: "#10B981" },
+                            { period: 50, color: "#F59E0B" },
+                        ],
+                        bollinger: {
+                            show: technical_analysis.indicators.bollinger_upper !== undefined,
+                            color: "#8B5CF6",
+                        },
+                    }}
+                />
+            )}
 
             {/* Category Scores Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -467,7 +506,10 @@ MACDがシグナル線を下抜け: 売りシグナル
                 {/* Pattern Chart */}
                 <PatternChart
                     patterns={pattern_analysis.patterns}
-                    priceData={createMockHistoricalData(30, current_price)}
+                    priceData={
+                        historicalData?.historical_data || 
+                        createMockHistoricalData(30, current_price)
+                    }
                     height={350}
                     highlightPatterns={true}
                 />
