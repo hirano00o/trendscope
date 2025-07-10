@@ -172,6 +172,45 @@ export interface AnalysisResponse {
     }
 }
 
+// Historical Data Types
+export interface HistoricalDataPoint {
+    date: string
+    open: number
+    high: number
+    low: number
+    close: number
+    volume: number
+}
+
+export interface HistoricalDataMetadata {
+    current_price: number
+    price_change: number
+    price_change_percent: number
+    average_volume: number
+    data_quality: "high" | "medium" | "low"
+    retrieved_at: string
+}
+
+export interface HistoricalDataResponse {
+    symbol: string
+    period: string
+    data_points: number
+    start_date: string
+    end_date: string
+    historical_data: HistoricalDataPoint[]
+    metadata: HistoricalDataMetadata
+}
+
+export interface HistoricalApiResponse {
+    success: boolean
+    data?: HistoricalDataResponse
+    error?: {
+        code: string
+        message: string
+        details?: any
+    }
+}
+
 // Component prop types
 export interface AnalysisResultsProps {
     data: AnalysisData

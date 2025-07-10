@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Dict, List, Literal
 
 from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
@@ -370,3 +370,167 @@ class AnalysisResult(BaseModel):
     def validate_symbol(cls, v: str) -> str:
         """Validate stock symbol format."""
         return v.strip().upper()
+
+
+class HistoricalDataPoint(BaseModel):
+    """Single historical data point for chart display.
+
+    Represents OHLCV data for a single date, optimized for frontend
+    chart consumption with simplified types and consistent formatting.
+
+    Args:
+        date: Date in YYYY-MM-DD format
+        open: Opening price as float
+        high: Highest price as float
+        low: Lowest price as float
+        close: Closing price as float
+        volume: Trading volume as integer
+
+    Example:
+        >>> data_point = HistoricalDataPoint(
+        ...     date="2024-01-15",
+        ...     open=150.25,
+        ...     high=152.75,
+        ...     low=149.50,
+        ...     close=151.80,
+        ...     volume=1234567
+        ... )
+        >>> print(data_point.date)
+        '2024-01-15'
+    """
+
+    date: str = Field(..., description="Date in YYYY-MM-DD format")
+    open: float = Field(..., gt=0, description="Opening price")
+    high: float = Field(..., gt=0, description="Highest price")
+    low: float = Field(..., gt=0, description="Lowest price")
+    close: float = Field(..., gt=0, description="Closing price")
+    volume: int = Field(..., ge=0, description="Trading volume")
+
+    @model_validator(mode="after")
+    def validate_price_relationships(self) -> "HistoricalDataPoint":
+        """Validate that price relationships are logically consistent.
+
+        Ensures that:
+        - High price is at least as high as open and close prices
+        - Low price is at most as low as open and close prices
+
+        Returns:
+            Validated HistoricalDataPoint instance
+
+        Raises:
+            ValueError: If price relationships are invalid
+        """
+        if self.high < max(self.open, self.close):
+            raise ValueError("High price must be >= max(open, close)")
+
+        if self.low > min(self.open, self.close):
+            raise ValueError("Low price must be <= min(open, close)")
+
+        return self
+
+
+class HistoricalDataMetadata(BaseModel):
+    """Metadata for historical data response.
+
+    Contains additional information about the historical data including
+    price changes, volume statistics, and data quality indicators.
+
+    Args:
+        current_price: Most recent closing price
+        price_change: Absolute price change over the period
+        price_change_percent: Percentage price change over the period
+        average_volume: Average trading volume over the period
+        data_quality: Quality indicator (high/medium/low)
+        retrieved_at: Timestamp when data was retrieved
+
+    Example:
+        >>> metadata = HistoricalDataMetadata(
+        ...     current_price=151.80,
+        ...     price_change=5.25,
+        ...     price_change_percent=3.58,
+        ...     average_volume=1234567,
+        ...     data_quality="high",
+        ...     retrieved_at="2024-01-15T10:30:00Z"
+        ... )
+        >>> print(metadata.price_change_percent)
+        3.58
+    """
+
+    current_price: float = Field(..., gt=0, description="Most recent closing price")
+    price_change: float = Field(..., description="Absolute price change over period")
+    price_change_percent: float = Field(..., description="Percentage price change")
+    average_volume: int = Field(..., ge=0, description="Average trading volume")
+    data_quality: Literal["high", "medium", "low"] = Field(..., description="Data quality indicator")
+    retrieved_at: str = Field(..., description="Data retrieval timestamp")
+
+
+class HistoricalDataResponse(BaseModel):
+    """Response model for historical data API endpoint.
+
+    Contains historical OHLCV data and metadata for frontend chart display.
+    This model is specifically designed for chart consumption with simplified
+    data types and consistent formatting.
+
+    Args:
+        symbol: Stock symbol
+        period: Time period description
+        data_points: Number of data points in the response
+        start_date: Start date of the data in YYYY-MM-DD format
+        end_date: End date of the data in YYYY-MM-DD format
+        historical_data: List of historical data points
+        metadata: Additional metadata about the data
+
+    Example:
+        >>> response = HistoricalDataResponse(
+        ...     symbol="AAPL",
+        ...     period="1mo",
+        ...     data_points=22,
+        ...     start_date="2023-12-15",
+        ...     end_date="2024-01-15",
+        ...     historical_data=[data_point1, data_point2, ...],
+        ...     metadata=metadata
+        ... )
+        >>> print(len(response.historical_data))
+        22
+    """
+
+    symbol: str = Field(..., min_length=1, max_length=20, description="Stock symbol")
+    period: str = Field(..., description="Time period description")
+    data_points: int = Field(..., ge=1, description="Number of data points")
+    start_date: str = Field(..., description="Start date (YYYY-MM-DD)")
+    end_date: str = Field(..., description="End date (YYYY-MM-DD)")
+    historical_data: List[HistoricalDataPoint] = Field(
+        ..., min_length=1, description="Historical OHLCV data points"
+    )
+    metadata: HistoricalDataMetadata = Field(..., description="Additional metadata")
+
+    @field_validator("symbol")
+    @classmethod
+    def validate_symbol(cls, v: str) -> str:
+        """Validate stock symbol format."""
+        return v.strip().upper()
+
+
+class ApiResponse(BaseModel):
+    """Generic API response wrapper.
+
+    Provides a consistent response format for all API endpoints with
+    success indication and optional error handling.
+
+    Args:
+        success: Whether the request was successful
+        data: Response data (None if error occurred)
+        error: Error information (None if successful)
+
+    Example:
+        >>> response = ApiResponse(
+        ...     success=True,
+        ...     data={"symbol": "AAPL", "price": 150.00}
+        ... )
+        >>> print(response.success)
+        True
+    """
+
+    success: bool = Field(..., description="Request success status")
+    data: Any | None = Field(None, description="Response data")
+    error: Dict[str, Any] | None = Field(None, description="Error information")
