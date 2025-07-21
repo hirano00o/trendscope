@@ -6,7 +6,7 @@
  * error handling, and automatic retries.
  */
 
-import { useQuery, UseQueryResult } from "@tanstack/react-query"
+import { useQuery, useQueryClient, UseQueryResult } from "@tanstack/react-query"
 import { analysisApi, apiUtils } from "@/lib/api"
 import { HistoricalDataResponse } from "@/types/analysis"
 
@@ -19,7 +19,7 @@ export interface UseHistoricalDataOptions {
     endDate?: string
     enabled?: boolean
     staleTime?: number
-    cacheTime?: number
+    gcTime?: number
 }
 
 /**
@@ -51,7 +51,7 @@ export function useHistoricalData(
         endDate,
         enabled = true,
         staleTime = 5 * 60 * 1000, // 5 minutes
-        cacheTime = 10 * 60 * 1000, // 10 minutes
+        gcTime = 10 * 60 * 1000, // 10 minutes
     } = options
 
     return useQuery({
@@ -69,7 +69,7 @@ export function useHistoricalData(
         },
         enabled: enabled && !!symbol,
         staleTime,
-        cacheTime,
+        gcTime,
         retry: (failureCount, error) => {
             // Don't retry on client errors (4xx)
             if (apiUtils.isApiError(error) && error.status >= 400 && error.status < 500) {
@@ -137,7 +137,7 @@ export function useMultipleHistoricalData(
  * ```
  */
 export function usePrefetchHistoricalData() {
-    const queryClient = useQuery().client
+    const queryClient = useQueryClient()
 
     return (symbol: string, options: UseHistoricalDataOptions = {}) => {
         const { period = "1mo", startDate, endDate } = options
