@@ -9,10 +9,99 @@
 import { AnalysisData, AnalysisResponse, HistoricalDataResponse, HistoricalApiResponse } from "@/types/analysis"
 
 /**
- * Base API configuration
+ * Runtime configuration interface
+ */
+interface RuntimeConfig {
+    apiUrl: string
+    nodeEnv: string
+    version?: string
+}
+
+/**
+ * Runtime configuration cache
+ */
+let runtimeConfig: RuntimeConfig | null = null
+let configPromise: Promise<RuntimeConfig> | null = null
+
+/**
+ * Fetches runtime configuration from the config API endpoint
+ * 
+ * @description Gets dynamic configuration including the backend API URL
+ * that can be set at container runtime via environment variables.
+ * Uses caching to avoid multiple requests.
+ * 
+ * @returns Promise resolving to runtime configuration
+ * @throws {Error} When configuration cannot be retrieved
+ * 
+ * @example
+ * ```typescript
+ * const config = await getRuntimeConfig()
+ * console.log(config.apiUrl) // "http://trendscope-backend-service:8000"
+ * ```
+ */
+async function getRuntimeConfig(): Promise<RuntimeConfig> {
+    // Return cached config if available
+    if (runtimeConfig) {
+        return runtimeConfig
+    }
+
+    // Return existing promise if one is already in flight
+    if (configPromise) {
+        return configPromise
+    }
+
+    // Fetch configuration from API endpoint
+    configPromise = (async () => {
+        try {
+            const response = await fetch('/api/config', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                cache: 'no-store' // Always get fresh config
+            })
+
+            if (!response.ok) {
+                throw new Error(`Config API failed: ${response.status}`)
+            }
+
+            const config = await response.json() as RuntimeConfig
+            
+            // Cache the configuration
+            runtimeConfig = config
+            
+            console.log('[API Client] Loaded runtime configuration:', config)
+            return config
+        } catch (error) {
+            console.error('[API Client] Failed to load runtime configuration:', error)
+            
+            // Fallback to hardcoded backend service name for Kubernetes deployment
+            // This ensures proper service discovery in the cluster
+            const fallbackConfig: RuntimeConfig = {
+                apiUrl: "http://trendscope-backend-service:8000",
+                nodeEnv: 'production'
+            }
+            
+            console.warn('[API Client] Using fallback configuration for Kubernetes cluster:', fallbackConfig)
+            runtimeConfig = fallbackConfig
+            return fallbackConfig
+        } finally {
+            // Clear the promise so future calls can retry if needed
+            configPromise = null
+        }
+    })()
+
+    return configPromise
+}
+
+/**
+ * Base API configuration with dynamic URL resolution
  */
 const API_CONFIG = {
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+    async getBaseUrl(): Promise<string> {
+        const config = await getRuntimeConfig()
+        return config.apiUrl
+    },
     timeout: 30000, // 30 seconds for analysis requests
     retries: 3,
 } as const
@@ -46,7 +135,10 @@ export class ApiError extends Error {
  * ```
  */
 async function apiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_CONFIG.baseUrl}${endpoint}`
+    const baseUrl = await API_CONFIG.getBaseUrl()
+    const url = `${baseUrl}${endpoint}`
+
+    console.log(`[API Client] Making request to: ${url}`)
 
     const config: RequestInit = {
         headers: {
@@ -117,7 +209,11 @@ export const analysisApi = {
     /**
      * Performs comprehensive 6-category analysis for a stock symbol
      *
-     * @param symbol - Stock symbol to analyze (e.g., "AAPL", "GOOGL")
+     * @description Uses the frontend proxy API to bridge browser requests to the backend service.
+     * This resolves DNS resolution issues where browsers cannot directly access
+     * cluster-internal service names.
+     *
+     * @param symbol - Stock symbol to analyze (e.g., "AAPL", "GOOGL", "7203.T")
      * @returns Promise resolving to comprehensive analysis data
      * @throws {ApiError} When analysis fails or symbol is invalid
      *
@@ -134,13 +230,42 @@ export const analysisApi = {
             throw new ApiError(400, "Stock symbol is required")
         }
 
-        const response = await apiClient<AnalysisResponse>(`/api/v1/comprehensive/${normalizedSymbol}`)
+        console.log(`[Analysis API] Requesting analysis for symbol: ${normalizedSymbol}`)
+        console.log(`[Analysis API] Using proxy endpoint: /api/analysis/${normalizedSymbol}`)
 
-        if (!response.success || !response.data) {
-            throw new ApiError(500, response.error?.message || "Analysis failed", response.error)
+        // Use relative path to proxy API endpoint (no runtime config needed)
+        const response = await fetch(`/api/analysis/${normalizedSymbol}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+
+        if (!response.ok) {
+            let errorData
+            try {
+                errorData = await response.json()
+            } catch {
+                errorData = { message: response.statusText }
+            }
+
+            console.error(`[Analysis API] Request failed:`, errorData)
+            throw new ApiError(
+                response.status,
+                errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+                errorData,
+            )
         }
 
-        return response.data
+        const analysisResponse = await response.json() as AnalysisResponse
+        
+        console.log(`[Analysis API] Received response:`, analysisResponse.success)
+
+        if (!analysisResponse.success || !analysisResponse.data) {
+            throw new ApiError(500, analysisResponse.error?.message || "Analysis failed", analysisResponse.error)
+        }
+
+        return analysisResponse.data
     },
 
     /**
@@ -149,16 +274,10 @@ export const analysisApi = {
      * @param symbol - Stock symbol to analyze
      * @returns Promise resolving to technical analysis data
      * @throws {ApiError} When analysis fails
-     *
-     * @example
-     * ```typescript
-     * const technical = await analysisApi.getTechnicalAnalysis("AAPL")
-     * console.log(technical.indicators.rsi)
-     * ```
      */
     async getTechnicalAnalysis(symbol: string) {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-        return apiClient(`/api/v1/technical/${normalizedSymbol}`)
+        // TODO: Implement technical analysis proxy endpoint
+        throw new ApiError(501, "Technical analysis API not yet implemented with proxy")
     },
 
     /**
@@ -169,8 +288,8 @@ export const analysisApi = {
      * @throws {ApiError} When analysis fails
      */
     async getPatternAnalysis(symbol: string) {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-        return apiClient(`/api/v1/patterns/${normalizedSymbol}`)
+        // TODO: Implement pattern analysis proxy endpoint
+        throw new ApiError(501, "Pattern analysis API not yet implemented with proxy")
     },
 
     /**
@@ -181,8 +300,8 @@ export const analysisApi = {
      * @throws {ApiError} When analysis fails
      */
     async getVolatilityAnalysis(symbol: string) {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-        return apiClient(`/api/v1/volatility/${normalizedSymbol}`)
+        // TODO: Implement volatility analysis proxy endpoint
+        throw new ApiError(501, "Volatility analysis API not yet implemented with proxy")
     },
 
     /**
@@ -193,8 +312,8 @@ export const analysisApi = {
      * @throws {ApiError} When analysis fails
      */
     async getMLAnalysis(symbol: string) {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-        return apiClient(`/api/v1/ml/${normalizedSymbol}`)
+        // TODO: Implement ML analysis proxy endpoint
+        throw new ApiError(501, "ML analysis API not yet implemented with proxy")
     },
 
     /**
@@ -222,34 +341,8 @@ export const analysisApi = {
         startDate?: string,
         endDate?: string
     ): Promise<HistoricalDataResponse> {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-
-        if (!normalizedSymbol || normalizedSymbol.length === 0) {
-            throw new ApiError(400, "Stock symbol is required")
-        }
-
-        // Build query parameters
-        const params = new URLSearchParams()
-        if (period) {
-            params.append("period", period)
-        }
-        if (startDate) {
-            params.append("start_date", startDate)
-        }
-        if (endDate) {
-            params.append("end_date", endDate)
-        }
-
-        const queryString = params.toString()
-        const endpoint = `/api/v1/historical/${normalizedSymbol}${queryString ? `?${queryString}` : ""}`
-
-        const response = await apiClient<HistoricalApiResponse>(endpoint)
-
-        if (!response.success || !response.data) {
-            throw new ApiError(500, response.error?.message || "Historical data retrieval failed", response.error)
-        }
-
-        return response.data
+        // TODO: Implement historical data proxy endpoint
+        throw new ApiError(501, "Historical data API not yet implemented with proxy")
     },
 
     /**
@@ -257,15 +350,10 @@ export const analysisApi = {
      *
      * @returns Promise resolving to health check data
      * @throws {ApiError} When health check fails
-     *
-     * @example
-     * ```typescript
-     * const health = await analysisApi.checkHealth()
-     * console.log(health.status) // "ok"
-     * ```
      */
     async checkHealth() {
-        return apiClient("/health")
+        // TODO: Implement health check proxy endpoint
+        throw new ApiError(501, "Health check API not yet implemented with proxy")
     },
 }
 
@@ -368,6 +456,6 @@ export const apiUtils = {
 }
 
 /**
- * Export the main API client for custom requests
+ * Export the main API client for custom requests and configuration utilities
  */
-export { apiClient }
+export { apiClient, getRuntimeConfig, type RuntimeConfig }
