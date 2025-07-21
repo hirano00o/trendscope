@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y \
 # Install uv package manager
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
+# Create non-root user for security
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash appuser
+
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 
@@ -23,10 +27,18 @@ RUN uv sync --frozen --no-dev
 COPY src/ ./src/
 COPY main.py ./
 
+# Create cache directory and set permissions
+RUN mkdir -p /tmp/.cache/uv && \
+    chown -R appuser:appuser /app /tmp/.cache
+
+# Switch to non-root user
+USER appuser
+
 # Set environment variables
 ENV PYTHONPATH=/app/src
 ENV HOST=0.0.0.0
 ENV PORT=8000
+ENV UV_CACHE_DIR=/tmp/.cache/uv
 
 # Expose port
 EXPOSE 8000
