@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trendscope
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: namespace
+    environment: production
+  annotations:
+    description: "TrendScope - Stock price trend analysis application namespace"
