@@ -9,104 +9,6 @@
 import { AnalysisData, AnalysisResponse, HistoricalDataResponse, HistoricalApiResponse } from "@/types/analysis"
 
 /**
- * Runtime configuration interface
- */
-interface RuntimeConfig {
-    apiUrl: string
-    nodeEnv: string
-    version?: string
-}
-
-/**
- * Runtime configuration cache
- */
-let runtimeConfig: RuntimeConfig | null = null
-let configPromise: Promise<RuntimeConfig> | null = null
-
-/**
- * Fetches runtime configuration from the config API endpoint
- * 
- * @description Gets dynamic configuration including the backend API URL
- * that can be set at container runtime via environment variables.
- * Uses caching to avoid multiple requests.
- * 
- * @returns Promise resolving to runtime configuration
- * @throws {Error} When configuration cannot be retrieved
- * 
- * @example
- * ```typescript
- * const config = await getRuntimeConfig()
- * console.log(config.apiUrl) // "http://trendscope-backend-service:8000"
- * ```
- */
-async function getRuntimeConfig(): Promise<RuntimeConfig> {
-    // Return cached config if available
-    if (runtimeConfig) {
-        return runtimeConfig
-    }
-
-    // Return existing promise if one is already in flight
-    if (configPromise) {
-        return configPromise
-    }
-
-    // Fetch configuration from API endpoint
-    configPromise = (async () => {
-        try {
-            const response = await fetch('/api/config', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                cache: 'no-store' // Always get fresh config
-            })
-
-            if (!response.ok) {
-                throw new Error(`Config API failed: ${response.status}`)
-            }
-
-            const config = await response.json() as RuntimeConfig
-            
-            // Cache the configuration
-            runtimeConfig = config
-            
-            console.log('[API Client] Loaded runtime configuration:', config)
-            return config
-        } catch (error) {
-            console.error('[API Client] Failed to load runtime configuration:', error)
-            
-            // Fallback to hardcoded backend service name for Kubernetes deployment
-            // This ensures proper service discovery in the cluster
-            const fallbackConfig: RuntimeConfig = {
-                apiUrl: "http://trendscope-backend-service:8000",
-                nodeEnv: 'production'
-            }
-            
-            console.warn('[API Client] Using fallback configuration for Kubernetes cluster:', fallbackConfig)
-            runtimeConfig = fallbackConfig
-            return fallbackConfig
-        } finally {
-            // Clear the promise so future calls can retry if needed
-            configPromise = null
-        }
-    })()
-
-    return configPromise
-}
-
-/**
- * Base API configuration with dynamic URL resolution
- */
-const API_CONFIG = {
-    async getBaseUrl(): Promise<string> {
-        const config = await getRuntimeConfig()
-        return config.apiUrl
-    },
-    timeout: 30000, // 30 seconds for analysis requests
-    retries: 3,
-} as const
-
-/**
  * Custom API error class with additional context
  */
 export class ApiError extends Error {
@@ -120,87 +22,6 @@ export class ApiError extends Error {
     }
 }
 
-/**
- * HTTP client with error handling and retry logic
- *
- * @param endpoint - API endpoint path
- * @param options - Fetch options
- * @returns Promise resolving to parsed JSON response
- * @throws {ApiError} When request fails or returns error status
- *
- * @example
- * ```typescript
- * const data = await apiClient("/api/v1/health")
- * const result = await apiClient("/api/v1/analyze/AAPL", { method: "POST" })
- * ```
- */
-async function apiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const baseUrl = await API_CONFIG.getBaseUrl()
-    const url = `${baseUrl}${endpoint}`
-
-    console.log(`[API Client] Making request to: ${url}`)
-
-    const config: RequestInit = {
-        headers: {
-            "Content-Type": "application/json",
-            ...options.headers,
-        },
-        ...options,
-    }
-
-    let lastError: Error | null = null
-
-    // Retry logic
-    for (let attempt = 1; attempt <= API_CONFIG.retries; attempt++) {
-        try {
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout)
-
-            const response = await fetch(url, {
-                ...config,
-                signal: controller.signal,
-            })
-
-            clearTimeout(timeoutId)
-
-            if (!response.ok) {
-                let errorData
-                try {
-                    errorData = await response.json()
-                } catch {
-                    errorData = { message: response.statusText }
-                }
-
-                throw new ApiError(
-                    response.status,
-                    errorData.message || `HTTP ${response.status}: ${response.statusText}`,
-                    errorData,
-                )
-            }
-
-            const data = await response.json()
-            return data
-        } catch (error) {
-            lastError = error as Error
-
-            // Don't retry on client errors (4xx) except for specific cases
-            if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-                if (error.status !== 408 && error.status !== 429) {
-                    // Don't retry except for timeout and rate limit
-                    throw error
-                }
-            }
-
-            // Wait before retry (exponential backoff)
-            if (attempt < API_CONFIG.retries) {
-                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
-                await new Promise((resolve) => setTimeout(resolve, delay))
-            }
-        }
-    }
-
-    throw lastError || new Error("Request failed after all retries")
-}
 
 /**
  * API service functions for stock analysis
@@ -456,6 +277,6 @@ export const apiUtils = {
 }
 
 /**
- * Export the main API client for custom requests and configuration utilities
+ * Export only the used API service functions
  */
-export { apiClient, getRuntimeConfig, type RuntimeConfig }
+// analysisApi and apiUtils are exported via their declarations above

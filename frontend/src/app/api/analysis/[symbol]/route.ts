@@ -44,13 +44,8 @@ export async function GET(
             )
         }
 
-        // Get backend URL from environment variables
-        // Temporary fix: Use ClusterIP directly due to DNS resolution issues
-        const backendUrl = 
-            process.env.BACKEND_API_URL ||
-            process.env.API_URL ||
-            process.env.NEXT_PUBLIC_API_URL ||
-            'http://10.10.0.135:8000'  // ClusterIP of trendscope-backend-service
+        // Get backend URL from environment variable
+        const backendUrl = process.env.BACKEND_API_URL || 'http://trendscope-backend-service:8000'
 
         const targetUrl = `${backendUrl}/api/v1/comprehensive/${symbol.toUpperCase()}`
         
