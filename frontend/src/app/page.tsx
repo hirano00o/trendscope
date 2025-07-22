@@ -12,6 +12,7 @@ import { useState } from "react"
 import { StockAnalysisForm } from "@/components/stock-analysis-form"
 import { AnalysisResults } from "@/components/analysis-results"
 import { HeroSection } from "@/components/hero-section"
+import { analysisApi } from "@/lib/api"
 import type { AnalysisData } from "@/types/analysis"
 
 /**
@@ -45,38 +46,15 @@ export default function Page() {
         setError(null)
 
         try {
-            // Call the API directly using fetch
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-            const url = `${apiUrl}/api/v1/comprehensive/${symbol}`
-
-            console.log(`📡 Making API request to: ${url}`)
-
-            const response = await fetch(url, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            })
-
-            console.log(`📊 API response status: ${response.status}`)
-
-            if (!response.ok) {
-                const errorText = await response.text()
-                console.error(`❌ API error: ${response.status} - ${errorText}`)
-                throw new Error(`API request failed: ${response.status}`)
-            }
-
-            const response_data = await response.json()
-            console.log(`✅ API response received:`, response_data)
-
-            // Check if the response has the expected wrapper structure
-            if (response_data?.success && response_data.data) {
-                console.log(`🎯 Setting analysis data...`)
-                setAnalysisData(response_data.data)
-            } else {
-                console.error(`❌ Invalid response structure:`, response_data)
-                throw new Error("Invalid response data structure")
-            }
+            // Use the API client with runtime configuration
+            console.log(`📡 Starting comprehensive analysis for: ${symbol}`)
+            
+            const analysisResult = await analysisApi.getComprehensiveAnalysis(symbol)
+            
+            console.log(`✅ Analysis completed successfully:`, analysisResult)
+            console.log(`🎯 Setting analysis data...`)
+            
+            setAnalysisData(analysisResult)
         } catch (error) {
             console.error("❌ Analysis failed:", error)
             const errorMessage = error instanceof Error ? error.message : "不明なエラーが発生しました"

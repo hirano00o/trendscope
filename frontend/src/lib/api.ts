@@ -9,15 +9,6 @@
 import { AnalysisData, AnalysisResponse, HistoricalDataResponse, HistoricalApiResponse } from "@/types/analysis"
 
 /**
- * Base API configuration
- */
-const API_CONFIG = {
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
-    timeout: 30000, // 30 seconds for analysis requests
-    retries: 3,
-} as const
-
-/**
  * Custom API error class with additional context
  */
 export class ApiError extends Error {
@@ -31,84 +22,6 @@ export class ApiError extends Error {
     }
 }
 
-/**
- * HTTP client with error handling and retry logic
- *
- * @param endpoint - API endpoint path
- * @param options - Fetch options
- * @returns Promise resolving to parsed JSON response
- * @throws {ApiError} When request fails or returns error status
- *
- * @example
- * ```typescript
- * const data = await apiClient("/api/v1/health")
- * const result = await apiClient("/api/v1/analyze/AAPL", { method: "POST" })
- * ```
- */
-async function apiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_CONFIG.baseUrl}${endpoint}`
-
-    const config: RequestInit = {
-        headers: {
-            "Content-Type": "application/json",
-            ...options.headers,
-        },
-        ...options,
-    }
-
-    let lastError: Error | null = null
-
-    // Retry logic
-    for (let attempt = 1; attempt <= API_CONFIG.retries; attempt++) {
-        try {
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout)
-
-            const response = await fetch(url, {
-                ...config,
-                signal: controller.signal,
-            })
-
-            clearTimeout(timeoutId)
-
-            if (!response.ok) {
-                let errorData
-                try {
-                    errorData = await response.json()
-                } catch {
-                    errorData = { message: response.statusText }
-                }
-
-                throw new ApiError(
-                    response.status,
-                    errorData.message || `HTTP ${response.status}: ${response.statusText}`,
-                    errorData,
-                )
-            }
-
-            const data = await response.json()
-            return data
-        } catch (error) {
-            lastError = error as Error
-
-            // Don't retry on client errors (4xx) except for specific cases
-            if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-                if (error.status !== 408 && error.status !== 429) {
-                    // Don't retry except for timeout and rate limit
-                    throw error
-                }
-            }
-
-            // Wait before retry (exponential backoff)
-            if (attempt < API_CONFIG.retries) {
-                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
-                await new Promise((resolve) => setTimeout(resolve, delay))
-            }
-        }
-    }
-
-    throw lastError || new Error("Request failed after all retries")
-}
 
 /**
  * API service functions for stock analysis
@@ -117,7 +30,11 @@ export const analysisApi = {
     /**
      * Performs comprehensive 6-category analysis for a stock symbol
      *
-     * @param symbol - Stock symbol to analyze (e.g., "AAPL", "GOOGL")
+     * @description Uses the frontend proxy API to bridge browser requests to the backend service.
+     * This resolves DNS resolution issues where browsers cannot directly access
+     * cluster-internal service names.
+     *
+     * @param symbol - Stock symbol to analyze (e.g., "AAPL", "GOOGL", "7203.T")
      * @returns Promise resolving to comprehensive analysis data
      * @throws {ApiError} When analysis fails or symbol is invalid
      *
@@ -134,13 +51,42 @@ export const analysisApi = {
             throw new ApiError(400, "Stock symbol is required")
         }
 
-        const response = await apiClient<AnalysisResponse>(`/api/v1/comprehensive/${normalizedSymbol}`)
+        console.log(`[Analysis API] Requesting analysis for symbol: ${normalizedSymbol}`)
+        console.log(`[Analysis API] Using proxy endpoint: /api/analysis/${normalizedSymbol}`)
 
-        if (!response.success || !response.data) {
-            throw new ApiError(500, response.error?.message || "Analysis failed", response.error)
+        // Use relative path to proxy API endpoint (no runtime config needed)
+        const response = await fetch(`/api/analysis/${normalizedSymbol}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+
+        if (!response.ok) {
+            let errorData
+            try {
+                errorData = await response.json()
+            } catch {
+                errorData = { message: response.statusText }
+            }
+
+            console.error(`[Analysis API] Request failed:`, errorData)
+            throw new ApiError(
+                response.status,
+                errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+                errorData,
+            )
         }
 
-        return response.data
+        const analysisResponse = await response.json() as AnalysisResponse
+        
+        console.log(`[Analysis API] Received response:`, analysisResponse.success)
+
+        if (!analysisResponse.success || !analysisResponse.data) {
+            throw new ApiError(500, analysisResponse.error?.message || "Analysis failed", analysisResponse.error)
+        }
+
+        return analysisResponse.data
     },
 
     /**
@@ -149,16 +95,10 @@ export const analysisApi = {
      * @param symbol - Stock symbol to analyze
      * @returns Promise resolving to technical analysis data
      * @throws {ApiError} When analysis fails
-     *
-     * @example
-     * ```typescript
-     * const technical = await analysisApi.getTechnicalAnalysis("AAPL")
-     * console.log(technical.indicators.rsi)
-     * ```
      */
     async getTechnicalAnalysis(symbol: string) {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-        return apiClient(`/api/v1/technical/${normalizedSymbol}`)
+        // TODO: Implement technical analysis proxy endpoint
+        throw new ApiError(501, "Technical analysis API not yet implemented with proxy")
     },
 
     /**
@@ -169,8 +109,8 @@ export const analysisApi = {
      * @throws {ApiError} When analysis fails
      */
     async getPatternAnalysis(symbol: string) {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-        return apiClient(`/api/v1/patterns/${normalizedSymbol}`)
+        // TODO: Implement pattern analysis proxy endpoint
+        throw new ApiError(501, "Pattern analysis API not yet implemented with proxy")
     },
 
     /**
@@ -181,8 +121,8 @@ export const analysisApi = {
      * @throws {ApiError} When analysis fails
      */
     async getVolatilityAnalysis(symbol: string) {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-        return apiClient(`/api/v1/volatility/${normalizedSymbol}`)
+        // TODO: Implement volatility analysis proxy endpoint
+        throw new ApiError(501, "Volatility analysis API not yet implemented with proxy")
     },
 
     /**
@@ -193,8 +133,8 @@ export const analysisApi = {
      * @throws {ApiError} When analysis fails
      */
     async getMLAnalysis(symbol: string) {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-        return apiClient(`/api/v1/ml/${normalizedSymbol}`)
+        // TODO: Implement ML analysis proxy endpoint
+        throw new ApiError(501, "ML analysis API not yet implemented with proxy")
     },
 
     /**
@@ -222,34 +162,8 @@ export const analysisApi = {
         startDate?: string,
         endDate?: string
     ): Promise<HistoricalDataResponse> {
-        const normalizedSymbol = symbol.trim().toUpperCase()
-
-        if (!normalizedSymbol || normalizedSymbol.length === 0) {
-            throw new ApiError(400, "Stock symbol is required")
-        }
-
-        // Build query parameters
-        const params = new URLSearchParams()
-        if (period) {
-            params.append("period", period)
-        }
-        if (startDate) {
-            params.append("start_date", startDate)
-        }
-        if (endDate) {
-            params.append("end_date", endDate)
-        }
-
-        const queryString = params.toString()
-        const endpoint = `/api/v1/historical/${normalizedSymbol}${queryString ? `?${queryString}` : ""}`
-
-        const response = await apiClient<HistoricalApiResponse>(endpoint)
-
-        if (!response.success || !response.data) {
-            throw new ApiError(500, response.error?.message || "Historical data retrieval failed", response.error)
-        }
-
-        return response.data
+        // TODO: Implement historical data proxy endpoint
+        throw new ApiError(501, "Historical data API not yet implemented with proxy")
     },
 
     /**
@@ -257,15 +171,10 @@ export const analysisApi = {
      *
      * @returns Promise resolving to health check data
      * @throws {ApiError} When health check fails
-     *
-     * @example
-     * ```typescript
-     * const health = await analysisApi.checkHealth()
-     * console.log(health.status) // "ok"
-     * ```
      */
     async checkHealth() {
-        return apiClient("/health")
+        // TODO: Implement health check proxy endpoint
+        throw new ApiError(501, "Health check API not yet implemented with proxy")
     },
 }
 
@@ -368,6 +277,6 @@ export const apiUtils = {
 }
 
 /**
- * Export the main API client for custom requests
+ * Export only the used API service functions
  */
-export { apiClient }
+// analysisApi and apiUtils are exported via their declarations above
