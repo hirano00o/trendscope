@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trendscope-frontend-service
+  namespace: trendscope
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: trendscope
+  annotations:
+    description: "TrendScope Frontend Web Service"
+spec:
+  type: LoadBalancer
+
+  selector:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP

@@ -1,0 +1,115 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trendscope-backend
+  namespace: trendscope
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: trendscope
+spec:
+  replicas: 2
+  
+  # ローリングアップデート戦略
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trendscope
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: trendscope
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: trendscope
+    spec:
+      containers:
+      - name: backend
+        # GitHub Container Registry の trendscope-api イメージを使用
+        image: ghcr.io/hirano00o/trendscope-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        
+        # 環境変数の設定
+        envFrom:
+        - configMapRef:
+            name: trendscope-config
+        # - secretRef:  # 機密情報がある場合
+        #     name: trendscope-secrets
+        
+        env:
+        - name: HOST
+          valueFrom:
+            configMapKeyRef:
+              name: trendscope-config
+              key: BACKEND_HOST
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: trendscope-config
+              key: BACKEND_PORT
+        - name: PYTHONPATH
+          valueFrom:
+            configMapKeyRef:
+              name: trendscope-config
+              key: PYTHONPATH
+        - name: UV_CACHE_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: trendscope-config
+              key: UV_CACHE_DIR
+        
+        # リソース制限（Docker Composeの設定を参考）
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        
+        # ヘルスチェック設定
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 40
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        
+        # セキュリティコンテキスト
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: false  # アプリケーションの要件に応じて調整
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        
+      # Pod レベルのセキュリティコンテキスト
+      securityContext:
+        fsGroup: 1000

@@ -1,0 +1,29 @@
+---
+# Cilium L2 Announcement Policy
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: trendscope-l2-announcement
+  namespace: trendscope
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: network
+    app.kubernetes.io/part-of: trendscope
+  annotations:
+    description: "TrendScope LoadBalancer IP announcement policy for frontend service"
+spec:
+  # フロントエンドサービスのみを対象とする
+  serviceSelector:
+    matchLabels:
+      app.kubernetes.io/name: trendscope
+      app.kubernetes.io/component: frontend
+  
+  # ネットワークインターフェース（通常はeth0, eth1など）
+  interfaces:
+    - ^eth[0-9]+
+  
+  # ExternalIPsの通知を有効化
+  externalIPs: true
+  
+  # LoadBalancerIPsの通知を有効化
+  loadBalancerIPs: true

@@ -1,0 +1,21 @@
+---
+# Cilium LoadBalancer IP Pool
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: trendscope-ippool
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: network
+    app.kubernetes.io/part-of: trendscope
+  annotations:
+    description: "TrendScope LoadBalancer IP pool for frontend service"
+spec:
+  blocks:
+     - cidr: "192.168.0.160/28"
+  
+  # 対象サービスの選択
+  serviceSelector:
+    matchLabels:
+      app.kubernetes.io/name: trendscope
+      app.kubernetes.io/component: frontend

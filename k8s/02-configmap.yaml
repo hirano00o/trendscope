@@ -1,0 +1,45 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trendscope-config
+  namespace: trendscope
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: configmap
+data:
+  # Backend configuration
+  BACKEND_HOST: "0.0.0.0"
+  BACKEND_PORT: "8000"
+  PYTHONPATH: "/app/src"
+  UV_CACHE_DIR: "/tmp/.cache/uv"
+  
+  # Frontend configuration
+  NODE_ENV: "production"
+  FRONTEND_PORT: "3000"
+  HOSTNAME: "0.0.0.0"
+  
+  # API endpoints - クラスタ内通信
+  # Backend API URL for server-side proxy requests
+  BACKEND_API_URL: "http://trendscope-backend-service:8000"
+  
+  # Health check paths
+  BACKEND_HEALTH_PATH: "/health"
+  FRONTEND_HEALTH_PATH: "/"
+
+---
+# Secretの例（必要に応じて使用）
+# API キーや機密情報がある場合はこちらを使用
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trendscope-secrets
+  namespace: trendscope
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: secret
+type: Opaque
+# data:
+  # 例: APIキーがある場合
+  # API_KEY: base64でエンコードされた値
+  # DB_PASSWORD: base64でエンコードされた値
