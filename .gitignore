@@ -210,10 +210,6 @@ __marimo__/
 
 screener_result.csv
 
-# CLAUDE.md files (project-specific instructions)
-CLAUDE.md
-*/CLAUDE.md
-
 # Go specific
 # Binaries for programs and plugins
 *.exe
@@ -233,6 +229,3 @@ go.work
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
-# Go mod cache
-go.sum
