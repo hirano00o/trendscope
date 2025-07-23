@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for TrendScope Discord Bot
 # Stage 1: Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -9,7 +9,7 @@ RUN apk add --no-cache git ca-certificates tzdata
 WORKDIR /app
 
 # Copy go mod files
-COPY go.mod go.sum ./
+COPY go.* ./
 
 # Download dependencies
 RUN go mod download
