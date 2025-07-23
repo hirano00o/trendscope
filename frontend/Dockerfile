@@ -21,6 +21,8 @@ RUN bun run build
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# Fix Node.js DNS resolution in Kubernetes
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 
 # Expose port
 EXPOSE 3000
