@@ -59,6 +59,7 @@ export async function GET(
         let backendResponse: Response
         try {
             // Make request to backend service using cluster-internal DNS
+            // Note: Using fetch with Node.js DNS resolution fix (NODE_OPTIONS=--dns-result-order=ipv4first)
             backendResponse = await fetch(targetUrl, {
                 method: 'GET',
                 headers: {
