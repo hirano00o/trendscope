@@ -57,5 +57,33 @@ services:
         reservations:
           memory: 256M
 
+  discord-bot:
+    build:
+      context: ./discord-bot
+      dockerfile: Dockerfile
+    container_name: trendscope-discord-bot
+    environment:
+      BACKEND_API_URL: http://backend:8000
+      CSV_PATH: /data/screener_result.csv
+      CRON_SCHEDULE: "0 10 * * 1-5"  # 平日朝10時
+      MAX_WORKERS: 10
+      TOP_STOCKS_COUNT: 15
+      # DISCORD_WEBHOOK_URL should be set via environment variable
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+    volumes:
+      - ./screener_result.csv:/data/screener_result.csv:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - trendscope-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
 networks:
   trendscope-network:
