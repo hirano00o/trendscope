@@ -9,27 +9,10 @@ metadata:
     app.kubernetes.io/component: discord-bot-configmap
 data:
   # Discord Bot configuration
+  EXECUTION_MODE: "once"  # "once" for Kubernetes CronJob, "cron" for Docker Compose
   BACKEND_API_URL: "http://trendscope-backend-service:8000"
   CSV_PATH: "/data/screener_result.csv"
-  CRON_SCHEDULE: "0 10 * * 1-5"  # 平日朝10時
+  CRON_SCHEDULE: "0 10 * * 1-5"  # 平日朝10時（cronモード時のみ使用）
   MAX_WORKERS: "10"
   TOP_STOCKS_COUNT: "15"
-
----
-# ConfigMap for CSV data
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: trendscope-discord-bot-csv
-  namespace: trendscope
-  labels:
-    app.kubernetes.io/name: trendscope
-    app.kubernetes.io/component: discord-bot-csv
-binaryData:
-  # Note: The CSV data should be base64 encoded and placed here
-  # This is a placeholder - the actual CSV data should be loaded using:
-  # kubectl create configmap trendscope-discord-bot-csv --from-file=screener_result.csv --namespace=trendscope
-  # 
-  # To update the CSV data:
-  # kubectl create configmap trendscope-discord-bot-csv --from-file=screener_result.csv --namespace=trendscope --dry-run=client -o yaml | kubectl apply -f -
-  screener_result.csv: ""
+  LOG_LEVEL: "INFO"  # "DEBUG", "INFO", "WARN", "ERROR"
