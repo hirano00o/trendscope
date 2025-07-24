@@ -15,11 +15,13 @@ import (
 //
 // @example
 // ```go
-// result := &AnalysisResult{
-//     Symbol:       "7203.T",
-//     OverallScore: 0.75,
-//     Confidence:   0.8,
-// }
+//
+//	result := &AnalysisResult{
+//	    Symbol:       "7203.T",
+//	    OverallScore: 0.75,
+//	    Confidence:   0.8,
+//	}
+//
 // ```
 type AnalysisResult struct {
 	// Symbol is the stock symbol (e.g., "7203.T")
@@ -115,12 +117,14 @@ func NewClient(baseURL string) *Client {
 // ```go
 // ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 // defer cancel()
-// 
+//
 // result, err := client.GetComprehensiveAnalysis(ctx, "7203.T")
-// if err != nil {
-//     log.Printf("分析取得失敗: %v", err)
-//     return
-// }
+//
+//	if err != nil {
+//	    log.Printf("分析取得失敗: %v", err)
+//	    return
+//	}
+//
 // fmt.Printf("スコア: %.2f, 信頼度: %.2f", result.OverallScore, result.Confidence)
 // ```
 func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*AnalysisResult, error) {

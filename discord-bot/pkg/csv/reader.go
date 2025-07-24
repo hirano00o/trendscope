@@ -15,13 +15,15 @@ import (
 //
 // @example
 // ```go
-// stock := &Stock{
-//     Code:        "7203",
-//     Name:        "トヨタ自動車",
-//     Market:      "東P",
-//     CurrentValue: "2500",
-//     ChangeRate:  "+10(+0.40%)",
-// }
+//
+//	stock := &Stock{
+//	    Code:        "7203",
+//	    Name:        "トヨタ自動車",
+//	    Market:      "東P",
+//	    CurrentValue: "2500",
+//	    ChangeRate:  "+10(+0.40%)",
+//	}
+//
 // ```
 type Stock struct {
 	// Code is the stock code (e.g., "7203")
@@ -65,9 +67,11 @@ func (s *Stock) GetSymbol() string {
 // @example
 // ```go
 // stocks, err := ReadStocksFromCSV("./screener_result.csv")
-// if err != nil {
-//     log.Fatal(err)
-// }
+//
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
 // fmt.Printf("読み取った株式数: %d\n", len(stocks))
 // ```
 func ReadStocksFromCSV(filepath string) ([]*Stock, error) {

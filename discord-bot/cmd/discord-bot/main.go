@@ -25,9 +25,11 @@ import (
 // @example
 // ```go
 // app := NewApp()
-// if err := app.Run(ctx); err != nil {
-//     log.Fatal(err)
-// }
+//
+//	if err := app.Run(ctx); err != nil {
+//	    log.Fatal(err)
+//	}
+//
 // ```
 type App struct {
 	// config holds all application configuration
@@ -62,6 +64,7 @@ func NewApp() *App {
 	}
 
 	log.Printf("Initializing Discord Bot with config:")
+	log.Printf("  Execution Mode: %s", cfg.ExecutionMode)
 	log.Printf("  Backend API: %s", cfg.BackendAPIURL)
 	log.Printf("  CSV Path: %s", cfg.CSVPath)
 	log.Printf("  Cron Schedule: %s", cfg.CronSchedule)
@@ -79,7 +82,9 @@ func NewApp() *App {
 // Run starts the Discord Bot application
 //
 // @description Discord Botアプリケーションを開始する
-// スケジューラーを設定し、メインループを開始
+// ExecutionModeに基づいて動作を制御：
+// - "once": 即座に一度だけ分析を実行（Kubernetes CronJob用）
+// - "cron": スケジューラーを設定してメインループを開始（Docker Compose用）
 // シグナルハンドリングによる優雅な終了をサポート
 //
 // @param {context.Context} ctx アプリケーションのコンテキスト
@@ -88,12 +93,30 @@ func NewApp() *App {
 // @example
 // ```go
 // ctx := context.Background()
-// if err := app.Run(ctx); err != nil {
-//     log.Fatal(err)
-// }
+//
+//	if err := app.Run(ctx); err != nil {
+//	    log.Fatal(err)
+//	}
+//
 // ```
 func (app *App) Run(ctx context.Context) error {
 	log.Printf("Starting TrendScope Discord Bot...")
+	log.Printf("Execution Mode: %s", app.config.ExecutionMode)
+
+	// Execution mode: "once" - run immediately and exit (for Kubernetes CronJob)
+	if app.config.ExecutionMode == "once" {
+		log.Printf("Running in 'once' mode - executing analysis immediately")
+
+		if err := app.runStockAnalysis(ctx); err != nil {
+			return fmt.Errorf("stock analysis failed in 'once' mode: %w", err)
+		}
+
+		log.Printf("Analysis completed successfully in 'once' mode")
+		return nil
+	}
+
+	// Execution mode: "cron" - use internal scheduler (for Docker Compose)
+	log.Printf("Running in 'cron' mode - starting scheduler")
 
 	// Setup job
 	job := &scheduler.Job{
@@ -114,7 +137,7 @@ func (app *App) Run(ctx context.Context) error {
 	go app.scheduler.Start(signalCtx)
 
 	log.Printf("Discord Bot started successfully! Waiting for scheduled execution...")
-	log.Printf("Next execution scheduled for: %s (Cron: %s)", 
+	log.Printf("Next execution scheduled for: %s (Cron: %s)",
 		app.getNextExecutionTime(), app.config.CronSchedule)
 
 	// Wait for shutdown signal
@@ -136,9 +159,11 @@ func (app *App) Run(ctx context.Context) error {
 // @example
 // ```go
 // ctx := context.Background()
-// if err := runStockAnalysis(ctx); err != nil {
-//     log.Printf("分析失敗: %v", err)
-// }
+//
+//	if err := runStockAnalysis(ctx); err != nil {
+//	    log.Printf("分析失敗: %v", err)
+//	}
+//
 // ```
 func (app *App) runStockAnalysis(ctx context.Context) error {
 	log.Printf("=== Starting Stock Analysis Workflow ===")
@@ -164,11 +189,11 @@ func (app *App) runStockAnalysis(ctx context.Context) error {
 
 	// Process all stocks
 	responses := pool.ProcessStocks(ctx, requests)
-	
+
 	// Collect successful results
 	var successfulResults []*api.AnalysisResult
 	var failedCount int
-	
+
 	for response := range responses {
 		if response.Error != nil {
 			log.Printf("Analysis failed for %s: %v", response.Request.Symbol, response.Error)
@@ -187,7 +212,7 @@ func (app *App) runStockAnalysis(ctx context.Context) error {
 	// Step 4: Create Discord notification data
 	log.Printf("Step 4: Creating Discord notification for top %d stocks", app.config.TopStocksCount)
 	stockResults := discord.CreateStockResults(stocks, successfulResults, app.config.TopStocksCount)
-	
+
 	if len(stockResults) == 0 {
 		return fmt.Errorf("no stock results to notify")
 	}
@@ -205,7 +230,7 @@ func (app *App) runStockAnalysis(ctx context.Context) error {
 		if i >= 3 {
 			break
 		}
-		log.Printf("  %d. %s (%s) - Score: %.3f, Confidence: %.3f", 
+		log.Printf("  %d. %s (%s) - Score: %.3f, Confidence: %.3f",
 			i+1, result.Symbol, result.CompanyName, result.Score, result.Confidence)
 	}
 
@@ -239,12 +264,12 @@ func createAnalysisRequests(stocks []*csv.Stock) []api.AnalysisRequest {
 func (app *App) getNextExecutionTime() string {
 	// Simple calculation for "0 10 * * 1-5" (weekdays at 10:00)
 	now := time.Now()
-	
+
 	// If it's a weekday and before 10 AM, next execution is today at 10 AM
 	if now.Weekday() >= time.Monday && now.Weekday() <= time.Friday && now.Hour() < 10 {
 		return time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, now.Location()).Format("2006-01-02 15:04:05")
 	}
-	
+
 	// Otherwise, next execution is next Monday at 10 AM
 	daysUntilMonday := (7 - int(now.Weekday()) + int(time.Monday)) % 7
 	if daysUntilMonday == 0 {
@@ -262,10 +287,10 @@ func (app *App) getNextExecutionTime() string {
 // @throws {error} 終了処理に失敗した場合
 func (app *App) shutdown() error {
 	log.Printf("Shutting down Discord Bot...")
-	
+
 	// Stop scheduler
 	app.scheduler.Stop()
-	
+
 	log.Printf("Discord Bot shutdown completed")
 	return nil
 }
@@ -284,7 +309,7 @@ func (app *App) shutdown() error {
 // export CRON_SCHEDULE="0 10 * * 1-5"
 // export MAX_WORKERS="10"
 // export TOP_STOCKS_COUNT="15"
-// 
+//
 // ./discord-bot
 // ```
 func main() {

@@ -20,13 +20,15 @@ import (
 //
 // @example
 // ```go
-// result := &StockResult{
-//     Symbol:      "7203.T",
-//     CompanyName: "トヨタ自動車",
-//     Confidence:  0.8,
-//     Score:       0.75,
-//     KabutanURL:  "https://kabutan.jp/stock/?code=7203",
-// }
+//
+//	result := &StockResult{
+//	    Symbol:      "7203.T",
+//	    CompanyName: "トヨタ自動車",
+//	    Confidence:  0.8,
+//	    Score:       0.75,
+//	    KabutanURL:  "https://kabutan.jp/stock/?code=7203",
+//	}
+//
 // ```
 type StockResult struct {
 	// Symbol is the stock symbol with .T suffix
@@ -128,13 +130,15 @@ func NewWebhookClient(webhookURL string) *WebhookClient {
 //
 // @example
 // ```go
-// results := []StockResult{{
-//     Symbol: "7203.T",
-//     CompanyName: "トヨタ自動車",
-//     Confidence: 0.8,
-//     Score: 0.75,
-//     KabutanURL: "https://kabutan.jp/stock/?code=7203",
-// }}
+//
+//	results := []StockResult{{
+//	    Symbol: "7203.T",
+//	    CompanyName: "トヨタ自動車",
+//	    Confidence: 0.8,
+//	    Score: 0.75,
+//	    KabutanURL: "https://kabutan.jp/stock/?code=7203",
+//	}}
+//
 // err := client.SendStockAnalysis(ctx, results)
 // ```
 func (c *WebhookClient) SendStockAnalysis(ctx context.Context, results []StockResult) error {
@@ -162,7 +166,7 @@ func (c *WebhookClient) createAnalysisEmbed(results []StockResult) Embed {
 	var description strings.Builder
 	description.WriteString("```\n")
 	description.WriteString("シンボル,企業名,信頼度,スコア,URL\n")
-	
+
 	for _, result := range results {
 		line := fmt.Sprintf("%s,%s,%.1f,%.1f,%s\n",
 			result.Symbol,

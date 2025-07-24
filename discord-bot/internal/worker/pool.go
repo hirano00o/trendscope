@@ -20,15 +20,17 @@ import (
 // ```go
 // pool := NewPool(10, apiClient)
 // defer pool.Close()
-// 
+//
 // responses := pool.ProcessStocks(ctx, requests)
-// for response := range responses {
-//     if response.Error != nil {
-//         log.Printf("分析エラー: %v", response.Error)
-//         continue
-//     }
-//     fmt.Printf("結果: %+v\n", response.Result)
-// }
+//
+//	for response := range responses {
+//	    if response.Error != nil {
+//	        log.Printf("分析エラー: %v", response.Error)
+//	        continue
+//	    }
+//	    fmt.Printf("結果: %+v\n", response.Result)
+//	}
+//
 // ```
 type Pool struct {
 	// numWorkers is the number of worker goroutines
@@ -110,11 +112,11 @@ func (p *Pool) worker(workerID int) {
 
 		// Log processing result
 		if err != nil {
-			log.Printf("Worker %d: Failed to analyze %s (%s): %v [%v]", 
+			log.Printf("Worker %d: Failed to analyze %s (%s): %v [%v]",
 				workerID, request.Symbol, request.CompanyName, err, duration)
 		} else {
-			log.Printf("Worker %d: Analyzed %s (%s): score=%.3f, confidence=%.3f [%v]", 
-				workerID, request.Symbol, request.CompanyName, 
+			log.Printf("Worker %d: Analyzed %s (%s): score=%.3f, confidence=%.3f [%v]",
+				workerID, request.Symbol, request.CompanyName,
 				result.OverallScore, result.Confidence, duration)
 		}
 
@@ -144,18 +146,21 @@ func (p *Pool) worker(workerID int) {
 //
 // @example
 // ```go
-// requests := []api.AnalysisRequest{
-//     {Symbol: "7203.T", CompanyName: "トヨタ自動車"},
-//     {Symbol: "6758.T", CompanyName: "ソニー"},
-// }
-// 
+//
+//	requests := []api.AnalysisRequest{
+//	    {Symbol: "7203.T", CompanyName: "トヨタ自動車"},
+//	    {Symbol: "6758.T", CompanyName: "ソニー"},
+//	}
+//
 // responses := pool.ProcessStocks(ctx, requests)
 // var results []*api.AnalysisResult
-// for response := range responses {
-//     if response.Error == nil {
-//         results = append(results, response.Result)
-//     }
-// }
+//
+//	for response := range responses {
+//	    if response.Error == nil {
+//	        results = append(results, response.Result)
+//	    }
+//	}
+//
 // ```
 func (p *Pool) ProcessStocks(ctx context.Context, requests []api.AnalysisRequest) <-chan api.AnalysisResponse {
 	// Check if pool is closed
@@ -182,7 +187,7 @@ func (p *Pool) ProcessStocks(ctx context.Context, requests []api.AnalysisRequest
 			for i, request := range requests {
 				select {
 				case p.requestCh <- request:
-					log.Printf("Queued request %d/%d: %s (%s)", 
+					log.Printf("Queued request %d/%d: %s (%s)",
 						i+1, totalRequests, request.Symbol, request.CompanyName)
 				case <-ctx.Done():
 					log.Printf("Context cancelled, stopping request submission")
@@ -197,7 +202,7 @@ func (p *Pool) ProcessStocks(ctx context.Context, requests []api.AnalysisRequest
 			select {
 			case response := <-p.responseCh:
 				responseCount++
-				log.Printf("Processing response %d/%d: %s", 
+				log.Printf("Processing response %d/%d: %s",
 					responseCount, totalRequests, response.Request.Symbol)
 
 				select {
@@ -229,7 +234,7 @@ func (p *Pool) ProcessStocks(ctx context.Context, requests []api.AnalysisRequest
 // ```go
 // pool := NewPool(10, apiClient)
 // defer pool.Close() // 必ずリソースを解放
-// 
+//
 // // 処理を実行
 // responses := pool.ProcessStocks(ctx, requests)
 // // ...
@@ -278,7 +283,7 @@ func (p *Pool) Stats() string {
 // @description CSV株式データから分析要求のスライスを作成する
 // Worker poolで処理するためのリクエスト構造体に変換
 //
-// @param {[]*csv.Stock} stocks CSV株式データのスライス  
+// @param {[]*csv.Stock} stocks CSV株式データのスライス
 // @returns {[]api.AnalysisRequest} 分析要求のスライス
 //
 // @example
@@ -292,8 +297,8 @@ func CreateAnalysisRequests(stocks []interface{}) []api.AnalysisRequest {
 	// Since we can't import csv package here due to circular import,
 	// we'll define this as a utility function that can be called from main
 	requests := make([]api.AnalysisRequest, 0)
-	
+
 	// This will be implemented in the main package where both csv and worker are imported
-	
+
 	return requests
 }

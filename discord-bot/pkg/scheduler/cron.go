@@ -14,12 +14,14 @@ import (
 //
 // @example
 // ```go
-// job := &Job{
-//     Name: "stock-analysis",
-//     Handler: func(ctx context.Context) error {
-//         return analyzeStocks(ctx)
-//     },
-// }
+//
+//	job := &Job{
+//	    Name: "stock-analysis",
+//	    Handler: func(ctx context.Context) error {
+//	        return analyzeStocks(ctx)
+//	    },
+//	}
+//
 // ```
 type Job struct {
 	// Name is the job identifier
@@ -72,7 +74,7 @@ func NewScheduler() *Scheduler {
 // AddJob adds a job to the scheduler with the specified cron expression
 //
 // @description 指定されたCron式でジョブをスケジューラーに追加する
-// 
+//
 // サポートするCron形式：
 // - "分 時 日 月 曜日" （例: "0 10 * * 1-5" = 平日10時）
 // - 曜日: 0=日曜日, 1=月曜日, ..., 6=土曜日
@@ -84,14 +86,18 @@ func NewScheduler() *Scheduler {
 //
 // @example
 // ```go
-// job := &Job{
-//     Name: "daily-analysis",
-//     Handler: analyzeStocksHandler,
-// }
+//
+//	job := &Job{
+//	    Name: "daily-analysis",
+//	    Handler: analyzeStocksHandler,
+//	}
+//
 // err := scheduler.AddJob("0 10 * * 1-5", job)
-// if err != nil {
-//     log.Fatal(err)
-// }
+//
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
 // ```
 func (s *Scheduler) AddJob(cronExpr string, job *Job) error {
 	// Basic validation of cron expression
@@ -116,9 +122,9 @@ func (s *Scheduler) AddJob(cronExpr string, job *Job) error {
 // ```go
 // ctx := context.Background()
 // go scheduler.Start(ctx) // バックグラウンドで開始
-// 
+//
 // // メインプロセスの処理...
-// 
+//
 // scheduler.Stop() // 終了時
 // ```
 func (s *Scheduler) Start(ctx context.Context) {
@@ -176,7 +182,7 @@ func (s *Scheduler) checkAndRunJobs(now time.Time) {
 	for cronExpr, job := range s.jobs {
 		if s.shouldRunJob(cronExpr, now) {
 			log.Printf("Running job '%s' at %s", job.Name, now.Format("2006-01-02 15:04:05"))
-			
+
 			// Run job in a separate goroutine
 			go func(j *Job) {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
@@ -204,7 +210,7 @@ func (s *Scheduler) checkAndRunJobs(now time.Time) {
 func (s *Scheduler) shouldRunJob(cronExpr string, now time.Time) bool {
 	// Simple cron parsing for the most common case: "0 10 * * 1-5" (weekdays at 10:00)
 	// This is a simplified implementation for demonstration
-	
+
 	// Parse the cron expression
 	parts, err := s.parseCronExpression(cronExpr)
 	if err != nil {
@@ -276,7 +282,7 @@ func (s *Scheduler) validateCronExpression(cronExpr string) error {
 func (s *Scheduler) parseCronExpression(cronExpr string) ([]string, error) {
 	parts := make([]string, 0)
 	currentPart := ""
-	
+
 	for _, char := range cronExpr {
 		if char == ' ' {
 			if currentPart != "" {
@@ -287,7 +293,7 @@ func (s *Scheduler) parseCronExpression(cronExpr string) ([]string, error) {
 			currentPart += string(char)
 		}
 	}
-	
+
 	// Add the last part
 	if currentPart != "" {
 		parts = append(parts, currentPart)
@@ -313,7 +319,7 @@ func (s *Scheduler) matchesWeekdayRange(weekdaySpec string, currentWeekday int) 
 	if len(weekdaySpec) >= 3 && weekdaySpec[1] == '-' {
 		start := int(weekdaySpec[0] - '0')
 		end := int(weekdaySpec[2] - '0')
-		
+
 		return currentWeekday >= start && currentWeekday <= end
 	}
 

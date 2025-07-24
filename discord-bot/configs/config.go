@@ -14,10 +14,12 @@ import (
 // @example
 // ```go
 // cfg := configs.Load()
-// fmt.Printf("Cron schedule: %s\n", cfg.CronSchedule)
+// fmt.Printf("Execution mode: %s\n", cfg.ExecutionMode)
 // ```
 type Config struct {
-	// CronSchedule defines when the bot should run (default: weekdays at 10 AM)
+	// ExecutionMode defines how the bot should run: "cron" for internal scheduling, "once" for immediate execution
+	ExecutionMode string
+	// CronSchedule defines when the bot should run (only used in "cron" mode)
 	CronSchedule string
 	// DiscordWebhookURL is the Discord webhook URL for sending notifications
 	DiscordWebhookURL string
@@ -35,6 +37,9 @@ type Config struct {
 //
 // @description 環境変数からアプリケーション設定を読み込み、
 // 設定されていない場合は適切なデフォルト値を使用する
+// ExecutionModeによって動作を制御：
+// - "cron": 内蔵スケジューラーを使用（Docker Compose用）
+// - "once": 即座に一度だけ実行（Kubernetes CronJob用）
 //
 // @returns {Config} 完全な設定を含む構造体
 //
@@ -45,6 +50,7 @@ type Config struct {
 // ```
 func Load() *Config {
 	return &Config{
+		ExecutionMode:     getEnv("EXECUTION_MODE", "cron"),        // "cron" or "once"
 		CronSchedule:      getEnv("CRON_SCHEDULE", "0 10 * * 1-5"), // 平日10時
 		DiscordWebhookURL: getEnv("DISCORD_WEBHOOK_URL", ""),
 		BackendAPIURL:     getEnv("BACKEND_API_URL", "http://localhost:8000"),
