@@ -14,7 +14,9 @@ k8s/
 ├── 05-backend-service.yaml                # Backend Service
 ├── 06-frontend-service.yaml               # Frontend Service
 ├── 07-cilium-l2-announcement.yaml         # Cilium L2 Announcement Policy
-└── 08-cilium-loadbalancer-ippool.yaml     # Cilium LoadBalancer IP Pool
+├── 08-cilium-loadbalancer-ippool.yaml     # Cilium LoadBalancer IP Pool
+├── 09-discord-bot-configmap.yaml          # Discord Bot ConfigMap (設定のみ)
+└── 10-discord-bot-cronjob.yaml            # Discord Bot CronJob
 ```
 
 ## 🚀 デプロイメント手順
@@ -53,10 +55,7 @@ spec:
 ### 3. アプリケーションのデプロイ
 
 ```bash
-# 全マニフェストを一括適用
-kubectl apply -f k8s/
-
-# または個別に適用
+# TrendScopeアプリケーション（Backend/Frontend）の一括適用
 kubectl apply -f k8s/01-namespace.yaml
 kubectl apply -f k8s/02-configmap.yaml
 kubectl apply -f k8s/03-backend-deployment.yaml
@@ -65,7 +64,16 @@ kubectl apply -f k8s/05-backend-service.yaml
 kubectl apply -f k8s/06-frontend-service.yaml
 kubectl apply -f k8s/07-cilium-l2-announcement.yaml
 kubectl apply -f k8s/08-cilium-loadbalancer-ippool.yaml
+
+# Discord Bot は手動設定が必要なため、個別に実行
+# 詳細は後述の「Discord Bot設定」セクションを参照
 ```
+
+**📋 適用対象ファイル:**
+- ✅ **自動適用**: 01-08 のファイル（Backend/Frontend/Network設定）
+- ⚙️ **手動設定**: Discord Bot関連（事前準備が必要）
+
+**⚠️ 注意**: `kubectl apply -f k8s/` での一括適用は使用しないでください。Discord Bot関連の設定ConfigMapは含まれますが、Secret・CSVデータが未作成のためエラーになります。
 
 ### 4. デプロイメント状況の確認
 
@@ -199,4 +207,80 @@ kubectl logs -l k8s-app=cilium -n kube-system | grep -i "load.*balance\|l2.*anno
 kubectl get services --all-namespaces -o wide | grep LoadBalancer
 ```
 
-詳しいサポートが必要な場合は、プロジェクトのIssueページでお知らせください。
+## 🔧 Discord Bot デプロイ
+
+Discord BotのKubernetesデプロイメント手順です。アプリケーションの詳細については[discord-bot/README.md](../discord-bot/README.md)を参照してください。
+
+### 前提条件
+
+- TrendScopeアプリケーション（Backend）が既にデプロイされていること
+- SBI証券スクリーニング結果CSVファイルが準備されていること
+
+### デプロイ手順（3ステップ）
+
+#### ステップ1: 事前準備（手動作成）
+
+```bash
+# 1. Discord Webhook URLでSecretを作成
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
+kubectl create secret generic trendscope-discord-bot-secret \
+  --from-literal=DISCORD_WEBHOOK_URL="$DISCORD_WEBHOOK_URL" \
+  --namespace=trendscope
+
+# 2. CSVデータをConfigMapに登録
+kubectl create configmap trendscope-discord-bot-csv \
+  --from-file=screener_result.csv \
+  --namespace=trendscope
+```
+
+### ステップ2: マニフェスト適用
+
+```bash
+# Discord Bot関連のマニフェストを適用
+kubectl apply -f k8s/09-discord-bot-configmap.yaml  # 設定ConfigMap
+kubectl apply -f k8s/10-discord-bot-cronjob.yaml    # CronJob定義
+```
+
+**📋 適用されるリソース:**
+- 設定用ConfigMap: 実行モード、API URL、並列数などの設定
+- CronJob: 平日朝10時の自動実行スケジュール
+
+### ステップ3: 動作確認
+
+```bash
+# CronJobの状態確認
+kubectl get cronjobs -n trendscope
+kubectl describe cronjob trendscope-discord-bot -n trendscope
+
+# 手動実行テスト（任意）
+kubectl create job trendscope-discord-bot-test \
+  --from=cronjob/trendscope-discord-bot \
+  -n trendscope
+
+# ログ確認
+kubectl logs job/trendscope-discord-bot-test -n trendscope -f
+```
+
+### 運用コマンド
+
+```bash
+# ログ確認
+kubectl logs -l job-name=trendscope-discord-bot -n trendscope --tail=50
+
+# 手動実行
+kubectl create job trendscope-discord-bot-manual \
+  --from=cronjob/trendscope-discord-bot \
+  -n trendscope
+
+# CSVファイル更新
+kubectl create configmap trendscope-discord-bot-csv \
+  --from-file=screener_result.csv \
+  --namespace=trendscope \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# 設定変更
+kubectl patch configmap trendscope-discord-bot-config -n trendscope \
+  --type merge -p '{"data":{"MAX_WORKERS":"15"}}'
+```
+
+**詳細情報**: アプリケーション機能・設定・トラブルシューティングについては[discord-bot/README.md](../discord-bot/README.md)を参照してください。

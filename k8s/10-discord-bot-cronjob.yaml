@@ -1,0 +1,97 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trendscope-discord-bot
+  namespace: trendscope
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: discord-bot
+    app.kubernetes.io/part-of: trendscope
+spec:
+  # Cron schedule: 平日朝10時 (月曜日から金曜日の10:00 JST)
+  # 注意: KubernetesのCronJobはUTC時間で動作するため、JST (UTC+9) を考慮
+  # JST 10:00 = UTC 01:00
+  schedule: "0 1 * * 1-5"
+  
+  # TimeZone support (Kubernetes 1.24+)
+  timeZone: "Asia/Tokyo"
+  
+  # Job template
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: trendscope
+        app.kubernetes.io/component: discord-bot-job
+    spec:
+      # Job should complete within 30 minutes
+      activeDeadlineSeconds: 1800
+      
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: trendscope
+            app.kubernetes.io/component: discord-bot-job
+        spec:
+          # Do not restart on failure - let CronJob handle retries
+          restartPolicy: Never
+          
+          containers:
+          - name: discord-bot
+            # Use the same image as would be built for the discord-bot
+            image: ghcr.io/hirano00o/trendscope-discord-bot:latest
+            imagePullPolicy: Always
+            
+            # Environment variables from ConfigMap
+            envFrom:
+            - configMapRef:
+                name: trendscope-discord-bot-config
+            
+            # Environment variables from Secret
+            env:
+            - name: DISCORD_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: trendscope-discord-bot-secret
+                  key: DISCORD_WEBHOOK_URL
+            
+            # Volume mounts for CSV data
+            volumeMounts:
+            - name: csv-data
+              mountPath: /data
+              readOnly: true
+            
+            # Resource limits
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "500m"
+            
+            # Security context
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1000
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+          
+          # Volumes
+          volumes:
+          - name: csv-data
+            configMap:
+              name: trendscope-discord-bot-csv
+          
+          # Pod security context
+          securityContext:
+            fsGroup: 1000
+            runAsNonRoot: true
+  
+  # CronJob specific settings
+  concurrencyPolicy: Forbid  # Do not allow concurrent executions
+  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 3
