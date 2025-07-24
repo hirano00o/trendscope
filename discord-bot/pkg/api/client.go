@@ -109,7 +109,7 @@ type AnalysisResult struct {
 //
 // @example
 // ```go
-// client := NewClient("http://localhost:8000")
+// client := NewClient("http://localhost:8000", false)
 // result, err := client.GetComprehensiveAnalysis(ctx, "7203.T")
 // ```
 type Client struct {
@@ -117,25 +117,29 @@ type Client struct {
 	baseURL string
 	// httpClient is the underlying HTTP client
 	httpClient *http.Client
+	// debugEnabled controls debug logging output
+	debugEnabled bool
 }
 
-// NewClient creates a new API client with the specified base URL
+// NewClient creates a new API client with the specified base URL and debug setting
 //
-// @description 指定されたベースURLでAPIクライアントを作成する
+// @description 指定されたベースURLとデバッグ設定でAPIクライアントを作成する
 // タイムアウトを30秒に設定し、安全な通信を確保
 //
 // @param {string} baseURL バックエンドAPIのベースURL
+// @param {bool} debugEnabled デバッグログの有効/無効
 // @returns {*Client} 設定済みのAPIクライアントインスタンス
 //
 // @example
 // ```go
-// client := NewClient("http://backend:8000")
+// client := NewClient("http://backend:8000", true)  // デバッグログ有効
 // // または
-// client := NewClient("http://localhost:8000")
+// client := NewClient("http://localhost:8000", false) // デバッグログ無効
 // ```
-func NewClient(baseURL string) *Client {
+func NewClient(baseURL string, debugEnabled bool) *Client {
 	return &Client{
-		baseURL: baseURL,
+		baseURL:      baseURL,
+		debugEnabled: debugEnabled,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -170,8 +174,10 @@ func NewClient(baseURL string) *Client {
 func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*AnalysisResult, error) {
 	url := fmt.Sprintf("%s/api/v1/comprehensive/%s", c.baseURL, symbol)
 
-	// Debug: Log request details
-	log.Printf("[DEBUG] API Request: %s", url)
+	// Debug: Log request details (only if debug enabled)
+	if c.debugEnabled {
+		log.Printf("[DEBUG] API Request: %s", url)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -182,8 +188,10 @@ func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "TrendScope-Discord-Bot/1.0")
 
-	// Debug: Log request headers
-	log.Printf("[DEBUG] Request Headers: %v", req.Header)
+	// Debug: Log request headers (only if debug enabled)
+	if c.debugEnabled {
+		log.Printf("[DEBUG] Request Headers: %v", req.Header)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -191,9 +199,11 @@ func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*
 	}
 	defer resp.Body.Close()
 
-	// Debug: Log response status and headers
-	log.Printf("[DEBUG] Response Status: %d %s", resp.StatusCode, resp.Status)
-	log.Printf("[DEBUG] Response Headers: %v", resp.Header)
+	// Debug: Log response status and headers (only if debug enabled)
+	if c.debugEnabled {
+		log.Printf("[DEBUG] Response Status: %d %s", resp.StatusCode, resp.Status)
+		log.Printf("[DEBUG] Response Headers: %v", resp.Header)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
@@ -206,11 +216,13 @@ func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*
 	}
 
 	// Debug: Log raw JSON response (first 500 chars to avoid log overflow)
-	responsePreview := string(bodyBytes)
-	if len(responsePreview) > 500 {
-		responsePreview = responsePreview[:500] + "..."
+	if c.debugEnabled {
+		responsePreview := string(bodyBytes)
+		if len(responsePreview) > 500 {
+			responsePreview = responsePreview[:500] + "..."
+		}
+		log.Printf("[DEBUG] Raw JSON Response for %s: %s", symbol, responsePreview)
 	}
-	log.Printf("[DEBUG] Raw JSON Response for %s: %s", symbol, responsePreview)
 
 	// Parse the backend response structure
 	var backendResponse BackendResponse
@@ -235,9 +247,11 @@ func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*
 		RiskAssessment: backendResponse.Data.IntegratedScore.RiskAssessment,
 	}
 
-	// Debug: Log parsed values
-	log.Printf("[DEBUG] Extracted values for %s: OverallScore=%.6f, Confidence=%.6f, Recommendation=%s, Risk=%s",
-		symbol, result.OverallScore, result.Confidence, result.Recommendation, result.RiskAssessment)
+	// Debug: Log parsed values (only if debug enabled)
+	if c.debugEnabled {
+		log.Printf("[DEBUG] Extracted values for %s: OverallScore=%.6f, Confidence=%.6f, Recommendation=%s, Risk=%s",
+			symbol, result.OverallScore, result.Confidence, result.Recommendation, result.RiskAssessment)
+	}
 
 	return result, nil
 }

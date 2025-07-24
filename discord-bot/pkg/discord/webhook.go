@@ -122,7 +122,6 @@ func NewWebhookClient(webhookURL string) *WebhookClient {
 //
 // @description 株式分析結果をDiscordに送信する
 // TOP15の結果を整形してリッチな埋め込みメッセージとして送信
-// 要件に従ったフォーマット：シンボル,企業名,信頼度,スコア,URL
 //
 // @param {context.Context} ctx リクエストのコンテキスト
 // @param {[]StockResult} results 分析結果のスライス（TOP15）
@@ -158,26 +157,28 @@ func (c *WebhookClient) SendStockAnalysis(ctx context.Context, results []StockRe
 // createAnalysisEmbed creates a Discord embed for stock analysis results
 //
 // @description 株式分析結果用のDiscord埋め込みメッセージを作成する
-// 要件に従ったフォーマットでデータを整形
+// マークダウン表形式で企業名をリンク化したフォーマットでデータを整形
 //
 // @param {[]StockResult} results 分析結果のスライス
 // @returns {Embed} Discord埋め込みメッセージ
 func (c *WebhookClient) createAnalysisEmbed(results []StockResult) Embed {
 	var description strings.Builder
-	description.WriteString("```\n")
-	description.WriteString("シンボル,企業名,信頼度,スコア,URL\n")
 
+	// マークダウン表のヘッダー
+	description.WriteString("| シンボル | 企業名 | 信頼度 | スコア |\n")
+	description.WriteString("|---------|--------|--------|--------|\n")
+
+	// データ行を追加（企業名をリンク化）
 	for _, result := range results {
-		line := fmt.Sprintf("%s,%s,%.1f,%.1f,%s\n",
+		line := fmt.Sprintf("| %s | [%s](%s) | %.3f | %.3f |\n",
 			result.Symbol,
 			result.CompanyName,
+			result.KabutanURL,
 			result.Confidence,
 			result.Score,
-			result.KabutanURL,
 		)
 		description.WriteString(line)
 	}
-	description.WriteString("```")
 
 	// Color: Green for positive trend
 	color := 0x00FF00

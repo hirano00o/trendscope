@@ -63,12 +63,13 @@ func (s *Stock) GetSymbol() string {
 // BOMの処理、引用符の寛容な処理、詳細なエラーハンドリングを行う
 //
 // @param {string} filepath CSVファイルのパス
+// @param {bool} debugEnabled デバッグログの有効/無効
 // @returns {[]*Stock} 読み取った株式データのスライス
 // @throws {error} ファイルの読み取りまたはCSVパースに失敗した場合
 //
 // @example
 // ```go
-// stocks, err := ReadStocksFromCSV("./screener_result.csv")
+// stocks, err := ReadStocksFromCSV("./screener_result.csv", true)
 //
 //	if err != nil {
 //	    log.Fatal(err)
@@ -76,36 +77,40 @@ func (s *Stock) GetSymbol() string {
 //
 // fmt.Printf("読み取った株式数: %d\n", len(stocks))
 // ```
-func ReadStocksFromCSV(filepath string) ([]*Stock, error) {
+func ReadStocksFromCSV(filepath string, debugEnabled bool) ([]*Stock, error) {
 	// Read file content as bytes to handle BOM properly
 	content, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CSV file: %w", err)
 	}
 
-	log.Printf("CSV file size: %d bytes", len(content))
+	if debugEnabled {
+		log.Printf("CSV file size: %d bytes", len(content))
+	}
 
 	// Remove BOM if present
-	content = removeBOM(content)
+	content = removeBOM(content, debugEnabled)
 
 	// Debug: Print first few lines for troubleshooting
 	lines := strings.Split(string(content), "\n")
-	log.Printf("CSV file has %d lines", len(lines))
+	if debugEnabled {
+		log.Printf("CSV file has %d lines", len(lines))
 
-	// Print first 3 lines for debugging (with character analysis)
-	for i, line := range lines {
-		if i >= 3 {
-			break
-		}
-		if line != "" {
-			log.Printf("Line %d: %q (length: %d)", i+1, line, len(line))
-			// Show first few bytes in hex for debugging only on first line
-			if i == 0 && len(line) > 0 {
-				maxBytes := 20
-				if len(line) < maxBytes {
-					maxBytes = len(line)
+		// Print first 3 lines for debugging (with character analysis)
+		for i, line := range lines {
+			if i >= 3 {
+				break
+			}
+			if line != "" {
+				log.Printf("Line %d: %q (length: %d)", i+1, line, len(line))
+				// Show first few bytes in hex for debugging only on first line
+				if i == 0 && len(line) > 0 {
+					maxBytes := 20
+					if len(line) < maxBytes {
+						maxBytes = len(line)
+					}
+					log.Printf("Line %d hex: %x", i+1, []byte(line[:maxBytes]))
 				}
-				log.Printf("Line %d hex: %x", i+1, []byte(line[:maxBytes]))
 			}
 		}
 	}
@@ -126,25 +131,29 @@ func ReadStocksFromCSV(filepath string) ([]*Stock, error) {
 			break
 		}
 		if err != nil {
-			log.Printf("CSV parse error at row %d: %v", rowNumber, err)
-			log.Printf("Problematic line: %q", getLineContent(lines, rowNumber-1))
+			if debugEnabled {
+				log.Printf("CSV parse error at row %d: %v", rowNumber, err)
+				log.Printf("Problematic line: %q", getLineContent(lines, rowNumber-1))
+			}
 			return nil, fmt.Errorf("failed to read CSV record at row %d: %w", rowNumber, err)
 		}
 
 		// Log details only for first few rows and problematic rows
-		if rowNumber <= 5 {
+		if debugEnabled && rowNumber <= 5 {
 			log.Printf("Row %d: parsed %d fields: %v", rowNumber, len(record), record)
 		}
 
 		// Skip header row
 		if rowNumber == 1 {
-			log.Printf("Skipping header row: %v", record)
+			if debugEnabled {
+				log.Printf("Skipping header row: %v", record)
+			}
 			continue
 		}
 
 		// Skip empty rows or rows with insufficient columns
 		if len(record) < 5 {
-			if rowNumber <= 10 { // Log only first few problematic rows
+			if debugEnabled && rowNumber <= 10 { // Log only first few problematic rows
 				log.Printf("Skipping row %d: insufficient columns (%d < 5)", rowNumber, len(record))
 			}
 			continue
@@ -159,7 +168,7 @@ func ReadStocksFromCSV(filepath string) ([]*Stock, error) {
 
 		// Skip if code is empty
 		if code == "" {
-			if rowNumber <= 10 { // Log only first few problematic rows
+			if debugEnabled && rowNumber <= 10 { // Log only first few problematic rows
 				log.Printf("Skipping row %d: empty stock code", rowNumber)
 			}
 			continue
@@ -176,7 +185,7 @@ func ReadStocksFromCSV(filepath string) ([]*Stock, error) {
 		stocks = append(stocks, stock)
 
 		// Log details only for first few stocks
-		if len(stocks) <= 5 {
+		if debugEnabled && len(stocks) <= 5 {
 			log.Printf("Added stock: %s (%s)", code, name)
 		}
 	}
@@ -208,11 +217,14 @@ func cleanField(field string) string {
 // UTF-8 BOM（EF BB BF）を検出して除去
 //
 // @param {[]byte} content ファイル内容のバイト配列
+// @param {bool} debugEnabled デバッグログの有効/無効
 // @returns {[]byte} BOMが除去されたバイト配列
-func removeBOM(content []byte) []byte {
+func removeBOM(content []byte, debugEnabled bool) []byte {
 	// UTF-8 BOM is EF BB BF
 	if len(content) >= 3 && content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF {
-		log.Printf("BOM detected and removed")
+		if debugEnabled {
+			log.Printf("BOM detected and removed")
+		}
 		return content[3:]
 	}
 	return content

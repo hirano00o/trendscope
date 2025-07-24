@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"log"
 	"os"
 	"strconv"
 )
@@ -31,6 +32,8 @@ type Config struct {
 	MaxWorkers int
 	// TopStocksCount defines how many top stocks to notify
 	TopStocksCount int
+	// LogLevel defines the logging level ("DEBUG", "INFO", "WARN", "ERROR")
+	LogLevel string
 }
 
 // Load loads configuration from environment variables with default values
@@ -57,6 +60,7 @@ func Load() *Config {
 		CSVPath:           getEnv("CSV_PATH", "./screener_result.csv"),
 		MaxWorkers:        getEnvInt("MAX_WORKERS", 10),
 		TopStocksCount:    getEnvInt("TOP_STOCKS_COUNT", 15),
+		LogLevel:          getEnv("LOG_LEVEL", "INFO"), // "DEBUG", "INFO", "WARN", "ERROR"
 	}
 }
 
@@ -89,4 +93,46 @@ func getEnvInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+// IsDebugEnabled checks if debug logging is enabled
+//
+// @description デバッグログが有効かどうかを確認する
+// LOG_LEVEL環境変数がDEBUGに設定されている場合にtrueを返す
+//
+// @param {*Config} config 設定構造体
+// @returns {bool} デバッグログが有効かどうか
+//
+// @example
+// ```go
+// config := Load()
+//
+//	if IsDebugEnabled(config) {
+//	    log.Printf("[DEBUG] This will only show when LOG_LEVEL=DEBUG")
+//	}
+//
+// ```
+func IsDebugEnabled(config *Config) bool {
+	return config.LogLevel == "DEBUG"
+}
+
+// LogDebug outputs a debug log message only if debug logging is enabled
+//
+// @description デバッグログが有効な場合のみログメッセージを出力する
+// 環境変数LOG_LEVEL=DEBUGの場合のみ出力される
+//
+// @param {*Config} config 設定構造体
+// @param {string} format printfフォーマット文字列
+// @param {...interface{}} args フォーマット引数
+//
+// @example
+// ```go
+// config := Load()
+// LogDebug(config, "[DEBUG] Processing %s with score %.3f", symbol, score)
+// // LOG_LEVEL=DEBUG の場合のみ出力される
+// ```
+func LogDebug(config *Config, format string, args ...interface{}) {
+	if IsDebugEnabled(config) {
+		log.Printf(format, args...)
+	}
 }

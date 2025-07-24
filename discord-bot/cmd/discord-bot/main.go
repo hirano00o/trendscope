@@ -70,11 +70,12 @@ func NewApp() *App {
 	log.Printf("  Cron Schedule: %s", cfg.CronSchedule)
 	log.Printf("  Max Workers: %d", cfg.MaxWorkers)
 	log.Printf("  Top Stocks Count: %d", cfg.TopStocksCount)
+	log.Printf("  Log Level: %s", cfg.LogLevel)
 
 	return &App{
 		config:        cfg,
 		scheduler:     scheduler.NewScheduler(),
-		apiClient:     api.NewClient(cfg.BackendAPIURL),
+		apiClient:     api.NewClient(cfg.BackendAPIURL, configs.IsDebugEnabled(cfg)),
 		webhookClient: discord.NewWebhookClient(cfg.DiscordWebhookURL),
 	}
 }
@@ -171,7 +172,7 @@ func (app *App) runStockAnalysis(ctx context.Context) error {
 
 	// Step 1: Read CSV data
 	log.Printf("Step 1: Reading CSV data from %s", app.config.CSVPath)
-	stocks, err := csv.ReadStocksFromCSV(app.config.CSVPath)
+	stocks, err := csv.ReadStocksFromCSV(app.config.CSVPath, configs.IsDebugEnabled(app.config))
 	if err != nil {
 		return fmt.Errorf("failed to read CSV: %w", err)
 	}
