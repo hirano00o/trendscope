@@ -4,14 +4,80 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"time"
 )
 
-// AnalysisResult represents the comprehensive analysis result from the backend API
+// BackendResponse represents the complete response from the backend API
 //
-// @description バックエンドAPIから返される包括的分析結果を表現する構造体
-// 6カテゴリーの分析結果を含む
+// @description バックエンドAPIから返される完全なレスポンス構造
+// success フラグと data オブジェクトを含む
+type BackendResponse struct {
+	Success bool         `json:"success"`
+	Data    ResponseData `json:"data"`
+}
+
+// ResponseData represents the data section of the backend response
+//
+// @description バックエンドAPIレスポンスのdataセクション
+type ResponseData struct {
+	Symbol              string              `json:"symbol"`
+	Timestamp           string              `json:"timestamp"`
+	CurrentPrice        float64             `json:"current_price"`
+	IntegratedScore     IntegratedScore     `json:"integrated_score"`
+	TechnicalAnalysis   TechnicalAnalysis   `json:"technical_analysis"`
+	PatternAnalysis     PatternAnalysis     `json:"pattern_analysis"`
+	VolatilityAnalysis  VolatilityAnalysis  `json:"volatility_analysis"`
+	MLAnalysis          MLAnalysis          `json:"ml_analysis"`
+	FundamentalAnalysis FundamentalAnalysis `json:"fundamental_analysis"`
+}
+
+// IntegratedScore represents the integrated scoring results
+type IntegratedScore struct {
+	OverallScore    float64 `json:"overall_score"`
+	ConfidenceLevel float64 `json:"confidence_level"`
+	Recommendation  string  `json:"recommendation"`
+	RiskAssessment  string  `json:"risk_assessment"`
+}
+
+// TechnicalAnalysis represents technical analysis results
+type TechnicalAnalysis struct {
+	OverallSignal  string  `json:"overall_signal"`
+	SignalStrength float64 `json:"signal_strength"`
+}
+
+// PatternAnalysis represents pattern analysis results
+type PatternAnalysis struct {
+	OverallSignal  string  `json:"overall_signal"`
+	SignalStrength float64 `json:"signal_strength"`
+	PatternScore   float64 `json:"pattern_score"`
+}
+
+// VolatilityAnalysis represents volatility analysis results
+type VolatilityAnalysis struct {
+	Regime          string  `json:"regime"`
+	RiskLevel       string  `json:"risk_level"`
+	VolatilityScore float64 `json:"volatility_score"`
+}
+
+// MLAnalysis represents machine learning analysis results
+type MLAnalysis struct {
+	TrendDirection string  `json:"trend_direction"`
+	ConsensusScore float64 `json:"consensus_score"`
+}
+
+// FundamentalAnalysis represents fundamental analysis results
+type FundamentalAnalysis struct {
+	Score      float64 `json:"score"`
+	Confidence float64 `json:"confidence"`
+}
+
+// AnalysisResult represents the simplified analysis result for Discord Bot
+//
+// @description Discord Bot用に簡略化された分析結果を表現する構造体
+// バックエンドAPIの複雑な構造から必要な値を抽出
 //
 // @example
 // ```go
@@ -25,41 +91,15 @@ import (
 // ```
 type AnalysisResult struct {
 	// Symbol is the stock symbol (e.g., "7203.T")
-	Symbol string `json:"symbol"`
+	Symbol string
 	// OverallScore is the overall analysis score (0.0-1.0)
-	OverallScore float64 `json:"overall_score"`
+	OverallScore float64
 	// Confidence is the confidence level of the analysis (0.0-1.0)
-	Confidence float64 `json:"confidence"`
-	// TechnicalAnalysis contains technical indicator results
-	TechnicalAnalysis struct {
-		Score      float64 `json:"score"`
-		Confidence float64 `json:"confidence"`
-		Signal     string  `json:"signal"`
-	} `json:"technical_analysis"`
-	// PatternAnalysis contains pattern recognition results
-	PatternAnalysis struct {
-		Score      float64 `json:"score"`
-		Confidence float64 `json:"confidence"`
-		Signal     string  `json:"signal"`
-	} `json:"pattern_analysis"`
-	// VolatilityAnalysis contains volatility analysis results
-	VolatilityAnalysis struct {
-		Score      float64 `json:"score"`
-		Confidence float64 `json:"confidence"`
-		Signal     string  `json:"signal"`
-	} `json:"volatility_analysis"`
-	// MLPrediction contains machine learning prediction results
-	MLPrediction struct {
-		Score      float64 `json:"score"`
-		Confidence float64 `json:"confidence"`
-		Signal     string  `json:"signal"`
-	} `json:"ml_prediction"`
-	// IntegratedScoring contains integrated scoring results
-	IntegratedScoring struct {
-		Score      float64 `json:"score"`
-		Confidence float64 `json:"confidence"`
-		Signal     string  `json:"signal"`
-	} `json:"integrated_scoring"`
+	Confidence float64
+	// Recommendation is the investment recommendation
+	Recommendation string
+	// RiskAssessment is the risk level assessment
+	RiskAssessment string
 }
 
 // Client represents an HTTP client for the TrendScope backend API
@@ -130,6 +170,9 @@ func NewClient(baseURL string) *Client {
 func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*AnalysisResult, error) {
 	url := fmt.Sprintf("%s/api/v1/comprehensive/%s", c.baseURL, symbol)
 
+	// Debug: Log request details
+	log.Printf("[DEBUG] API Request: %s", url)
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -137,6 +180,10 @@ func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "TrendScope-Discord-Bot/1.0")
+
+	// Debug: Log request headers
+	log.Printf("[DEBUG] Request Headers: %v", req.Header)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -144,19 +191,55 @@ func (c *Client) GetComprehensiveAnalysis(ctx context.Context, symbol string) (*
 	}
 	defer resp.Body.Close()
 
+	// Debug: Log response status and headers
+	log.Printf("[DEBUG] Response Status: %d %s", resp.StatusCode, resp.Status)
+	log.Printf("[DEBUG] Response Headers: %v", resp.Header)
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
 	}
 
-	var result AnalysisResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// Read response body as bytes for debugging
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Debug: Log raw JSON response (first 500 chars to avoid log overflow)
+	responsePreview := string(bodyBytes)
+	if len(responsePreview) > 500 {
+		responsePreview = responsePreview[:500] + "..."
+	}
+	log.Printf("[DEBUG] Raw JSON Response for %s: %s", symbol, responsePreview)
+
+	// Parse the backend response structure
+	var backendResponse BackendResponse
+	if err := json.Unmarshal(bodyBytes, &backendResponse); err != nil {
+		log.Printf("[ERROR] JSON Unmarshal failed for %s: %v", symbol, err)
+		log.Printf("[ERROR] Problematic JSON: %s", string(bodyBytes))
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// Ensure the symbol is set in the result
-	result.Symbol = symbol
+	// Check if the request was successful
+	if !backendResponse.Success {
+		log.Printf("[ERROR] Backend API returned success=false for %s", symbol)
+		return nil, fmt.Errorf("backend API returned success=false for symbol %s", symbol)
+	}
 
-	return &result, nil
+	// Extract values from the nested structure
+	result := &AnalysisResult{
+		Symbol:         symbol,
+		OverallScore:   backendResponse.Data.IntegratedScore.OverallScore,
+		Confidence:     backendResponse.Data.IntegratedScore.ConfidenceLevel,
+		Recommendation: backendResponse.Data.IntegratedScore.Recommendation,
+		RiskAssessment: backendResponse.Data.IntegratedScore.RiskAssessment,
+	}
+
+	// Debug: Log parsed values
+	log.Printf("[DEBUG] Extracted values for %s: OverallScore=%.6f, Confidence=%.6f, Recommendation=%s, Risk=%s",
+		symbol, result.OverallScore, result.Confidence, result.Recommendation, result.RiskAssessment)
+
+	return result, nil
 }
 
 // AnalysisRequest represents a request for stock analysis

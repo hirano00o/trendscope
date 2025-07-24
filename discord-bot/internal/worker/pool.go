@@ -45,7 +45,11 @@ type Pool struct {
 	wg sync.WaitGroup
 	// closed indicates if the pool is closed
 	closed bool
-	// mu protects the closed field
+	// requestChClosed indicates if request channel is closed
+	requestChClosed bool
+	// responseChClosed indicates if response channel is closed
+	responseChClosed bool
+	// mu protects the closed and channel closed fields
 	mu sync.RWMutex
 }
 
@@ -183,7 +187,6 @@ func (p *Pool) ProcessStocks(ctx context.Context, requests []api.AnalysisRequest
 
 		// Start sending requests
 		go func() {
-			defer close(p.requestCh)
 			for i, request := range requests {
 				select {
 				case p.requestCh <- request:
@@ -229,6 +232,7 @@ func (p *Pool) ProcessStocks(ctx context.Context, requests []api.AnalysisRequest
 // @description ワーカープールを安全に終了する
 // 全てのワーカーゴルーチンの終了を待機し、
 // チャネルをクローズしてリソースを解放
+// 二重クローズを防ぐため、すでに閉じられている場合は何も行わない
 //
 // @example
 // ```go
@@ -246,18 +250,26 @@ func (p *Pool) Close() error {
 		return nil
 	}
 	p.closed = true
-	p.mu.Unlock()
 
 	log.Printf("Closing worker pool...")
 
-	// Close request channel to signal workers to stop
-	close(p.requestCh)
+	// Close request channel to signal workers to stop (only if not already closed)
+	if !p.requestChClosed {
+		close(p.requestCh)
+		p.requestChClosed = true
+	}
+	p.mu.Unlock()
 
-	// Wait for all workers to finish
+	// Wait for all workers to finish (outside of lock to prevent deadlock)
 	p.wg.Wait()
 
-	// Close response channel
-	close(p.responseCh)
+	// Close response channel (only if not already closed)
+	p.mu.Lock()
+	if !p.responseChClosed {
+		close(p.responseCh)
+		p.responseChClosed = true
+	}
+	p.mu.Unlock()
 
 	log.Printf("Worker pool closed")
 	return nil
