@@ -177,18 +177,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             <p className="text-neutral-600 text-sm">
                                 {historicalError.message || "データを取得できませんでした"}
                             </p>
-                            <p className="text-neutral-500 text-xs mt-2">
-                                モックデータを表示しています
-                            </p>
+                            <p className="text-neutral-500 text-xs mt-2">モックデータを表示しています</p>
                         </div>
                     </CardContent>
                 </Card>
             ) : (
                 <PriceChart
-                    data={
-                        historicalData?.historical_data || 
-                        createMockHistoricalData(30, current_price)
-                    }
+                    data={historicalData?.historical_data || createMockHistoricalData(30, current_price)}
                     height={400}
                     showVolume={true}
                     timeRange="1M"
@@ -506,10 +501,7 @@ MACDがシグナル線を下抜け: 売りシグナル
                 {/* Pattern Chart */}
                 <PatternChart
                     patterns={pattern_analysis.patterns}
-                    priceData={
-                        historicalData?.historical_data || 
-                        createMockHistoricalData(30, current_price)
-                    }
+                    priceData={historicalData?.historical_data || createMockHistoricalData(30, current_price)}
                     height={350}
                     highlightPatterns={true}
                 />

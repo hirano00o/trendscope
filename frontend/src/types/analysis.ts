@@ -217,8 +217,7 @@ export interface AnalysisResultsProps {
 }
 
 export interface StockAnalysisFormProps {
-    onAnalyze: (symbol: string) => Promise<void>
-    isLoading: boolean
+    onAnalyze?: (symbol: string) => Promise<void>
 }
 
 // Chart data types for visualizations

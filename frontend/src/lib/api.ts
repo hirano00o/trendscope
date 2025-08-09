@@ -22,7 +22,6 @@ export class ApiError extends Error {
     }
 }
 
-
 /**
  * API service functions for stock analysis
  */
@@ -56,9 +55,9 @@ export const analysisApi = {
 
         // Use relative path to proxy API endpoint (no runtime config needed)
         const response = await fetch(`/api/analysis/${normalizedSymbol}`, {
-            method: 'GET',
+            method: "GET",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
         })
 
@@ -78,8 +77,8 @@ export const analysisApi = {
             )
         }
 
-        const analysisResponse = await response.json() as AnalysisResponse
-        
+        const analysisResponse = (await response.json()) as AnalysisResponse
+
         console.log(`[Analysis API] Received response:`, analysisResponse.success)
 
         if (!analysisResponse.success || !analysisResponse.data) {
@@ -151,7 +150,7 @@ export const analysisApi = {
      * ```typescript
      * const historical = await analysisApi.getHistoricalData("AAPL", "1mo")
      * console.log(historical.historical_data.length) // Number of data points
-     * 
+     *
      * const customRange = await analysisApi.getHistoricalData("AAPL", undefined, "2024-01-01", "2024-01-31")
      * console.log(customRange.metadata.current_price)
      * ```
@@ -160,7 +159,7 @@ export const analysisApi = {
         symbol: string,
         period?: string,
         startDate?: string,
-        endDate?: string
+        endDate?: string,
     ): Promise<HistoricalDataResponse> {
         // TODO: Implement historical data proxy endpoint
         throw new ApiError(501, "Historical data API not yet implemented with proxy")

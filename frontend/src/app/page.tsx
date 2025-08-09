@@ -8,12 +8,9 @@
 
 "use client"
 
-import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { StockAnalysisForm } from "@/components/stock-analysis-form"
-import { AnalysisResults } from "@/components/analysis-results"
 import { HeroSection } from "@/components/hero-section"
-import { analysisApi } from "@/lib/api"
-import type { AnalysisData } from "@/types/analysis"
 
 /**
  * Main landing page component
@@ -29,41 +26,18 @@ import type { AnalysisData } from "@/types/analysis"
  * ```
  */
 export default function Page() {
-    const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null)
-    const [isAnalyzing, setIsAnalyzing] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const router = useRouter()
 
     /**
-     * Handles stock analysis request
+     * Handles stock analysis request by navigating to the analysis page
      *
      * @param symbol - Stock symbol to analyze (e.g., "AAPL", "GOOGL")
-     * @throws {Error} When analysis fails or symbol is invalid
      */
     const handleAnalysis = async (symbol: string) => {
-        console.log(`🚀 Starting analysis for symbol: ${symbol}`)
-        setIsAnalyzing(true)
-        setAnalysisData(null)
-        setError(null)
+        console.log(`🚀 Navigating to analysis page for symbol: ${symbol}`)
 
-        try {
-            // Use the API client with runtime configuration
-            console.log(`📡 Starting comprehensive analysis for: ${symbol}`)
-            
-            const analysisResult = await analysisApi.getComprehensiveAnalysis(symbol)
-            
-            console.log(`✅ Analysis completed successfully:`, analysisResult)
-            console.log(`🎯 Setting analysis data...`)
-            
-            setAnalysisData(analysisResult)
-        } catch (error) {
-            console.error("❌ Analysis failed:", error)
-            const errorMessage = error instanceof Error ? error.message : "不明なエラーが発生しました"
-            setError(errorMessage)
-            throw error
-        } finally {
-            setIsAnalyzing(false)
-            console.log(`🏁 Analysis completed for ${symbol}`)
-        }
+        // Navigate to the analysis page with the symbol parameter
+        router.push(`/analysis/${symbol}` as any)
     }
 
     return (
@@ -87,87 +61,46 @@ export default function Page() {
 
             {/* Main Content */}
             <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                {!analysisData && !isAnalyzing ? (
-                    <div className="space-y-12">
-                        {/* Hero Section */}
-                        <HeroSection />
+                <div className="space-y-12">
+                    {/* Hero Section */}
+                    <HeroSection />
 
-                        {/* Stock Analysis Form */}
-                        <div className="mx-auto max-w-2xl">
-                            {error && (
-                                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                    <h3 className="text-lg font-medium text-red-800 mb-2">エラーが発生しました</h3>
-                                    <p className="text-red-700">{error}</p>
-                                    <button
-                                        onClick={() => setError(null)}
-                                        className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
-                                    >
-                                        エラーを閉じる
-                                    </button>
-                                </div>
-                            )}
-                            <StockAnalysisForm onAnalyze={handleAnalysis} isLoading={isAnalyzing} />
+                    {/* Stock Analysis Form */}
+                    <div className="mx-auto max-w-2xl">
+                        <StockAnalysisForm onAnalyze={handleAnalysis} />
+                    </div>
+
+                    {/* Features Overview */}
+                    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="card">
+                            <div className="card-header">
+                                <h3 className="card-title">テクニカル分析</h3>
+                            </div>
+                            <p className="text-sm text-neutral-600">
+                                SMA/EMAクロスオーバー、RSI、MACD、ボリンジャーバンド分析による 包括的なトレンド識別。
+                            </p>
                         </div>
 
-                        {/* Features Overview */}
-                        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                            <div className="card">
-                                <div className="card-header">
-                                    <h3 className="card-title">テクニカル分析</h3>
-                                </div>
-                                <p className="text-sm text-neutral-600">
-                                    SMA/EMAクロスオーバー、RSI、MACD、ボリンジャーバンド分析による
-                                    包括的なトレンド識別。
-                                </p>
+                        <div className="card">
+                            <div className="card-header">
+                                <h3 className="card-title">パターン認識</h3>
                             </div>
+                            <p className="text-sm text-neutral-600">
+                                ローソク足パターン、サポート/レジスタンスレベル、
+                                トレンドライン分析によるマーケットセンチメント解析。
+                            </p>
+                        </div>
 
-                            <div className="card">
-                                <div className="card-header">
-                                    <h3 className="card-title">パターン認識</h3>
-                                </div>
-                                <p className="text-sm text-neutral-600">
-                                    ローソク足パターン、サポート/レジスタンスレベル、
-                                    トレンドライン分析によるマーケットセンチメント解析。
-                                </p>
+                        <div className="card">
+                            <div className="card-header">
+                                <h3 className="card-title">機械学習予測</h3>
                             </div>
-
-                            <div className="card">
-                                <div className="card-header">
-                                    <h3 className="card-title">機械学習予測</h3>
-                                </div>
-                                <p className="text-sm text-neutral-600">
-                                    ランダムフォレスト、SVM、ARIMAを含むアンサンブル機械学習モデルによる 価格予測。
-                                </p>
-                            </div>
+                            <p className="text-sm text-neutral-600">
+                                ランダムフォレスト、SVM、ARIMAを含むアンサンブル機械学習モデルによる 価格予測。
+                            </p>
                         </div>
                     </div>
-                ) : isAnalyzing ? (
-                    <div className="flex items-center justify-center min-h-[60vh]">
-                        <div className="text-center">
-                            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div>
-                            <h2 className="text-xl font-semibold text-neutral-900 mb-2">株式を分析中...</h2>
-                            <p className="text-neutral-600">包括的な分析を実行しています。しばらくお待ちください。</p>
-                        </div>
-                    </div>
-                ) : analysisData ? (
-                    <div className="space-y-8">
-                        {/* Back to Search */}
-                        <div className="flex items-center justify-between">
-                            <button onClick={() => setAnalysisData(null)} className="btn btn-outline">
-                                ← 新しい分析
-                            </button>
-                            <div className="text-right">
-                                <h2 className="text-lg font-semibold text-neutral-900">分析結果</h2>
-                                <p className="text-sm text-neutral-600">
-                                    {analysisData.symbol} • {new Date().toLocaleDateString("ja-JP")}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Analysis Results */}
-                        <AnalysisResults data={analysisData} />
-                    </div>
-                ) : null}
+                </div>
             </main>
 
             {/* Footer */}
