@@ -229,3 +229,9 @@ go.work
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+.serena/memories/
+.serena/cache/
+.serena/index/
+.serena/logs/
+.serena/dashboard/

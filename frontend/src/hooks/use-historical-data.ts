@@ -35,7 +35,7 @@ export interface UseHistoricalDataOptions {
  *   period: "1mo",
  *   enabled: !!symbol
  * })
- * 
+ *
  * if (isLoading) return <div>Loading chart...</div>
  * if (error) return <div>Error: {error.message}</div>
  * if (data) return <PriceChart data={data.historical_data} />
@@ -43,7 +43,7 @@ export interface UseHistoricalDataOptions {
  */
 export function useHistoricalData(
     symbol: string | undefined,
-    options: UseHistoricalDataOptions = {}
+    options: UseHistoricalDataOptions = {},
 ): UseQueryResult<HistoricalDataResponse, Error> {
     const {
         period = "1mo",
@@ -91,31 +91,35 @@ export function useHistoricalData(
  *
  * @example
  * ```typescript
- * const { data: { "1mo": monthData, "3mo": threeMonthData }, isLoading } = 
+ * const { data: { "1mo": monthData, "3mo": threeMonthData }, isLoading } =
  *   useMultipleHistoricalData("AAPL", ["1mo", "3mo"])
  * ```
  */
 export function useMultipleHistoricalData(
     symbol: string | undefined,
-    periods: string[]
+    periods: string[],
 ): {
     data: Record<string, HistoricalDataResponse | undefined>
     isLoading: boolean
     errors: Record<string, Error | null>
 } {
-    const queries = periods.map((period) =>
-        useHistoricalData(symbol, { period, enabled: !!symbol })
+    const queries = periods.map((period) => useHistoricalData(symbol, { period, enabled: !!symbol }))
+
+    const data = periods.reduce(
+        (acc, period, index) => {
+            acc[period] = queries[index].data
+            return acc
+        },
+        {} as Record<string, HistoricalDataResponse | undefined>,
     )
 
-    const data = periods.reduce((acc, period, index) => {
-        acc[period] = queries[index].data
-        return acc
-    }, {} as Record<string, HistoricalDataResponse | undefined>)
-
-    const errors = periods.reduce((acc, period, index) => {
-        acc[period] = queries[index].error
-        return acc
-    }, {} as Record<string, Error | null>)
+    const errors = periods.reduce(
+        (acc, period, index) => {
+            acc[period] = queries[index].error
+            return acc
+        },
+        {} as Record<string, Error | null>,
+    )
 
     const isLoading = queries.some((query) => query.isLoading)
 
@@ -131,7 +135,7 @@ export function useMultipleHistoricalData(
  * @example
  * ```typescript
  * const prefetchHistoricalData = usePrefetchHistoricalData()
- * 
+ *
  * // Prefetch data when user hovers over a stock symbol
  * onMouseEnter={() => prefetchHistoricalData("AAPL", { period: "1mo" })}
  * ```

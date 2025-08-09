@@ -9,12 +9,12 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { cn, isValidStockSymbol, normalizeStockSymbol, debounce } from "@/lib/utils"
-import { useErrorHandler } from "@/lib/error-handling"
 import { StockAnalysisFormProps } from "@/types/analysis"
 
 // Popular stock symbols for quick selection (US and Japanese markets)
@@ -32,22 +32,20 @@ const POPULAR_STOCKS = [
 /**
  * Stock analysis form component
  *
- * @param props - Component props including onAnalyze callback and loading state
+ * @param props - Component props including optional onAnalyze callback
  * @returns JSX form element with symbol input and analysis controls
  *
  * @example
  * ```tsx
- * <StockAnalysisForm
- *   onAnalyze={handleAnalyzeStock}
- *   isLoading={isAnalyzing}
- * />
+ * <StockAnalysisForm onAnalyze={handleAnalyzeStock} />
  * ```
  */
-export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormProps) {
+export function StockAnalysisForm({ onAnalyze }: StockAnalysisFormProps) {
+    const router = useRouter()
     const [symbol, setSymbol] = useState("")
     const [error, setError] = useState("")
     const [suggestions, setSuggestions] = useState<string[]>([])
-    const { handleError } = useErrorHandler()
+    const [isNavigating, setIsNavigating] = useState(false)
 
     /**
      * Validates the entered stock symbol
@@ -111,7 +109,7 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
     }
 
     /**
-     * Handles form submission
+     * Handles form submission with navigation
      *
      * @param e - Form submit event
      */
@@ -129,10 +127,22 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
         try {
             setError("")
             setSuggestions([])
-            await onAnalyze(normalizedSymbol)
+            setIsNavigating(true)
+
+            console.log(`🚀 Form submit: navigating to /analysis/${normalizedSymbol}`)
+
+            // Use onAnalyze callback if provided, otherwise navigate directly
+            if (onAnalyze) {
+                await onAnalyze(normalizedSymbol)
+            } else {
+                router.push(`/analysis/${normalizedSymbol}` as any)
+            }
         } catch (error) {
-            const errorInfo = handleError(error, "stock-analysis-form")
-            setError(errorInfo.message)
+            console.error("❌ Form submit error:", error)
+            const errorMessage = error instanceof Error ? error.message : "エラーが発生しました"
+            setError(errorMessage)
+        } finally {
+            setIsNavigating(false)
         }
     }
 
@@ -145,16 +155,27 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
         setSymbol(selectedSymbol)
         setError("")
         setSuggestions([])
+        setIsNavigating(true)
 
         try {
-            await onAnalyze(selectedSymbol)
+            console.log(`🚀 Quick select: navigating to /analysis/${selectedSymbol}`)
+
+            // Use onAnalyze callback if provided, otherwise navigate directly
+            if (onAnalyze) {
+                await onAnalyze(selectedSymbol)
+            } else {
+                router.push(`/analysis/${selectedSymbol}` as any)
+            }
         } catch (error) {
-            const errorInfo = handleError(error, "quick-select")
-            setError(errorInfo.message)
+            console.error("❌ Quick select error:", error)
+            const errorMessage = error instanceof Error ? error.message : "エラーが発生しました"
+            setError(errorMessage)
+        } finally {
+            setIsNavigating(false)
         }
     }
 
-    const canSubmit = symbol.length > 0 && !error && !isLoading
+    const canSubmit = symbol.length > 0 && !error && !isNavigating
 
     return (
         <Card className="p-8">
@@ -181,7 +202,7 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
                                     : undefined
                             }
                             size="lg"
-                            disabled={isLoading}
+                            disabled={isNavigating}
                             startIcon={
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
@@ -224,10 +245,10 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
                         size="lg"
                         className="w-full"
                         disabled={!canSubmit}
-                        isLoading={isLoading}
-                        loadingText="株式を分析中..."
+                        isLoading={isNavigating}
+                        loadingText="ページを読み込み中..."
                     >
-                        {isLoading ? "分析実行中..." : "株式を分析"}
+                        {isNavigating ? "読み込み中..." : "株式を分析"}
                     </Button>
                 </div>
             </form>
@@ -244,10 +265,10 @@ export function StockAnalysisForm({ onAnalyze, isLoading }: StockAnalysisFormPro
                         <button
                             key={stock.symbol}
                             onClick={() => handleQuickSelect(stock.symbol)}
-                            disabled={isLoading}
+                            disabled={isNavigating}
                             className={cn(
                                 "p-3 text-left rounded-lg border border-neutral-200 hover:border-primary-300 hover:bg-primary-50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed",
-                                isLoading && "cursor-not-allowed",
+                                isNavigating && "cursor-not-allowed",
                             )}
                         >
                             <div className="font-semibold text-neutral-900 group-hover:text-primary-700">
