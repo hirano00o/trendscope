@@ -193,7 +193,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             { period: 50, color: "#F59E0B" },
                         ],
                         bollinger: {
-                            show: technical_analysis.indicators.bollinger_upper !== undefined,
+                            show: technical_analysis?.indicators?.bollinger_upper !== undefined,
                             color: "#8B5CF6",
                         },
                     }}
@@ -259,7 +259,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             <div className="space-y-3">
                                 <h4 className="font-medium text-neutral-700">主要指標</h4>
 
-                                {technical_analysis.indicators.rsi && (
+                                {technical_analysis?.indicators?.rsi && (
                                     <div className="flex items-center justify-between">
                                         <Tooltip
                                             content={
@@ -304,12 +304,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                     </div>
                                 )}
 
-                                {technical_analysis.indicators.macd && technical_analysis.indicators.macd_signal && (
-                                    <div className="flex items-center justify-between">
-                                        <Tooltip
-                                            content={
-                                                <div className="max-w-xs text-xs whitespace-pre-line">
-                                                    {`MACD (移動平均収束拡散手法)
+                                {technical_analysis?.indicators?.macd &&
+                                    technical_analysis?.indicators?.macd_signal && (
+                                        <div className="flex items-center justify-between">
+                                            <Tooltip
+                                                content={
+                                                    <div className="max-w-xs text-xs whitespace-pre-line">
+                                                        {`MACD (移動平均収束拡散手法)
 範囲: 制限なし（正負の値）
 
 2つの移動平均線の差とその移動平均を用いて、トレンドの変化を捉える指標です。
@@ -319,35 +320,35 @@ MACDがシグナル線を上抜け: 買いシグナル
 MACDがシグナル線を下抜け: 売りシグナル
 
 注意: トレンド相場で威力を発揮しますが、横ばい相場では偽シグナルが多くなります。`}
-                                                </div>
-                                            }
-                                        >
-                                            <span className="text-sm cursor-help">MACD:</span>
-                                        </Tooltip>
-                                        <div className="flex items-center space-x-2">
-                                            <span className="text-sm font-medium">
-                                                {technical_analysis.indicators.macd.toFixed(3)}
-                                            </span>
-                                            <Badge
-                                                variant={
-                                                    technical_analysis.indicators.macd >
-                                                    technical_analysis.indicators.macd_signal
-                                                        ? "success"
-                                                        : "warning"
+                                                    </div>
                                                 }
-                                                size="sm"
                                             >
-                                                {technical_analysis.indicators.macd >
-                                                technical_analysis.indicators.macd_signal
-                                                    ? "強気"
-                                                    : "弱気"}
-                                            </Badge>
+                                                <span className="text-sm cursor-help">MACD:</span>
+                                            </Tooltip>
+                                            <div className="flex items-center space-x-2">
+                                                <span className="text-sm font-medium">
+                                                    {technical_analysis.indicators.macd.toFixed(3)}
+                                                </span>
+                                                <Badge
+                                                    variant={
+                                                        technical_analysis.indicators.macd >
+                                                        technical_analysis.indicators.macd_signal
+                                                            ? "success"
+                                                            : "warning"
+                                                    }
+                                                    size="sm"
+                                                >
+                                                    {technical_analysis.indicators.macd >
+                                                    technical_analysis.indicators.macd_signal
+                                                        ? "強気"
+                                                        : "弱気"}
+                                                </Badge>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
                                 {/* Moving Averages */}
-                                {technical_analysis.indicators.sma_20 && technical_analysis.indicators.sma_50 && (
+                                {technical_analysis?.indicators?.sma_20 && technical_analysis?.indicators?.sma_50 && (
                                     <div className="flex items-center justify-between">
                                         <Tooltip
                                             content={
@@ -388,25 +389,76 @@ MACDがシグナル線を下抜け: 売りシグナル
                 </Card>
 
                 {/* Technical Indicator Chart */}
-                <TechnicalIndicatorChart
-                    indicators={technical_analysis.indicators}
-                    height={350}
-                    activeIndicators={["rsi", "macd"]}
-                />
+                {technical_analysis?.indicators ? (
+                    <TechnicalIndicatorChart
+                        indicators={technical_analysis.indicators}
+                        height={350}
+                        activeIndicators={["rsi", "macd"]}
+                    />
+                ) : (
+                    <Card>
+                        <CardContent className="flex items-center justify-center h-80">
+                            <div className="text-center text-neutral-600">
+                                <p>テクニカル指標チャートは利用できません</p>
+                                <p className="text-xs mt-1">テクニカル分析データが不完全です</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Pattern Analysis */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>パターン分析</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {/* Overall Pattern Signal */}
-                            <div className="flex items-center justify-between">
-                                <Tooltip
-                                    content={
-                                        <div className="max-w-xs text-xs whitespace-pre-line">
-                                            {`総合パターンシグナル
+                {!pattern_analysis || "error" in pattern_analysis ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>パターン分析</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col items-center justify-center p-8 text-center">
+                                <div className="mb-4">
+                                    <svg
+                                        className="w-16 h-16 text-neutral-400 mx-auto"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={1.5}
+                                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                        />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-medium text-neutral-700 mb-2">
+                                    パターン分析は利用できません
+                                </h3>
+                                <p className="text-neutral-600 text-sm max-w-md">
+                                    {!pattern_analysis
+                                        ? "パターン分析データが取得できませんでした。"
+                                        : "パターン分析の実行中にエラーが発生しました。"}
+                                    テクニカル分析やボラティリティ分析をご活用ください。
+                                </p>
+                                {pattern_analysis && "error" in pattern_analysis && (pattern_analysis as any).error && (
+                                    <div className="mt-3 p-3 bg-neutral-100 rounded text-xs text-neutral-500">
+                                        詳細: {(pattern_analysis as any).error}
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>パターン分析</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {/* Overall Pattern Signal */}
+                                <div className="flex items-center justify-between">
+                                    <Tooltip
+                                        content={
+                                            <div className="max-w-xs text-xs whitespace-pre-line">
+                                                {`総合パターンシグナル
 範囲: 強気/弱気/中立
 
 検出されたすべてのパターンを総合して算出された売買シグナルです。
@@ -417,24 +469,24 @@ MACDがシグナル線を下抜け: 売りシグナル
 中立: 様子見
 
 注意: 短期的な価格変動の予測に適していますが、中長期トレンドも考慮してください。`}
-                                        </div>
-                                    }
-                                >
-                                    <span className="font-medium cursor-help">パターンシグナル:</span>
-                                </Tooltip>
-                                <SignalBadge
-                                    signal={pattern_analysis.overall_signal.toLowerCase().replace("_", "-") as any}
-                                    strength={pattern_analysis.signal_strength}
-                                />
-                            </div>
+                                            </div>
+                                        }
+                                    >
+                                        <span className="font-medium cursor-help">パターンシグナル:</span>
+                                    </Tooltip>
+                                    <SignalBadge
+                                        signal={pattern_analysis.overall_signal.toLowerCase().replace("_", "-") as any}
+                                        strength={pattern_analysis.signal_strength}
+                                    />
+                                </div>
 
-                            {/* Pattern Score */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <Tooltip
-                                        content={
-                                            <div className="max-w-xs text-xs whitespace-pre-line">
-                                                {`パターンスコア
+                                {/* Pattern Score */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <Tooltip
+                                            content={
+                                                <div className="max-w-xs text-xs whitespace-pre-line">
+                                                    {`パターンスコア
 範囲: 0〜100%
 
 検出されたテクニカルパターンの信頼性と強さを総合的に評価したスコアです。
@@ -445,105 +497,161 @@ MACDがシグナル線を下抜け: 売りシグナル
 40〜60%: 中程度
 
 注意: 複数のパターンが同時に検出されると、スコアが高くなる傾向があります。`}
-                                            </div>
+                                                </div>
+                                            }
+                                        >
+                                            <span className="text-sm font-medium cursor-help">パターンスコア</span>
+                                        </Tooltip>
+                                        <span className="text-sm">
+                                            {Math.round(pattern_analysis.pattern_score * 100)}%
+                                        </span>
+                                    </div>
+                                    <Progress
+                                        value={pattern_analysis.pattern_score * 100}
+                                        variant={
+                                            pattern_analysis.pattern_score > 0.6
+                                                ? "success"
+                                                : pattern_analysis.pattern_score < 0.4
+                                                  ? "danger"
+                                                  : "default"
                                         }
-                                    >
-                                        <span className="text-sm font-medium cursor-help">パターンスコア</span>
-                                    </Tooltip>
-                                    <span className="text-sm">{Math.round(pattern_analysis.pattern_score * 100)}%</span>
+                                    />
                                 </div>
-                                <Progress
-                                    value={pattern_analysis.pattern_score * 100}
-                                    variant={
-                                        pattern_analysis.pattern_score > 0.6
-                                            ? "success"
-                                            : pattern_analysis.pattern_score < 0.4
-                                              ? "danger"
-                                              : "default"
-                                    }
-                                />
-                            </div>
 
-                            {/* Detected Patterns */}
-                            <div>
-                                <h4 className="font-medium text-neutral-700 mb-2">
-                                    検出されたパターン ({pattern_analysis.patterns.length})
-                                </h4>
-                                <div className="space-y-2 max-h-32 overflow-y-auto">
-                                    {pattern_analysis.patterns.slice(0, 3).map((pattern, index) => (
-                                        <div key={index} className="flex items-center justify-between text-sm">
-                                            <span className="truncate">{pattern.description}</span>
-                                            <Badge
-                                                variant={
-                                                    pattern.signal.includes("BULLISH")
-                                                        ? "success"
+                                {/* Detected Patterns */}
+                                <div>
+                                    <h4 className="font-medium text-neutral-700 mb-2">
+                                        検出されたパターン ({pattern_analysis.patterns.length})
+                                    </h4>
+                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                        {pattern_analysis.patterns.slice(0, 3).map((pattern, index) => (
+                                            <div key={index} className="flex items-center justify-between text-sm">
+                                                <span className="truncate">{pattern.description}</span>
+                                                <Badge
+                                                    variant={
+                                                        pattern.signal.includes("BULLISH")
+                                                            ? "success"
+                                                            : pattern.signal.includes("BEARISH")
+                                                              ? "destructive"
+                                                              : "secondary"
+                                                    }
+                                                    size="sm"
+                                                >
+                                                    {pattern.signal.includes("BULLISH")
+                                                        ? "強気"
                                                         : pattern.signal.includes("BEARISH")
-                                                          ? "destructive"
-                                                          : "secondary"
-                                                }
-                                                size="sm"
-                                            >
-                                                {pattern.signal.includes("BULLISH")
-                                                    ? "強気"
-                                                    : pattern.signal.includes("BEARISH")
-                                                      ? "弱気"
-                                                      : "中立"}{" "}
-                                                {Math.round(pattern.confidence * 100)}%
-                                            </Badge>
-                                        </div>
-                                    ))}
+                                                          ? "弱気"
+                                                          : "中立"}{" "}
+                                                    {Math.round(pattern.confidence * 100)}%
+                                                </Badge>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Pattern Chart */}
-                <PatternChart
-                    patterns={pattern_analysis.patterns}
-                    priceData={historicalData?.historical_data || createMockHistoricalData(30, current_price)}
-                    height={350}
-                    highlightPatterns={true}
-                />
+                {!pattern_analysis || "error" in pattern_analysis ? (
+                    <Card>
+                        <CardContent className="flex items-center justify-center h-80">
+                            <div className="text-center text-neutral-600">
+                                <p>パターンチャートは利用できません</p>
+                                <p className="text-xs mt-1">パターン分析データがありません</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <PatternChart
+                        patterns={pattern_analysis.patterns}
+                        priceData={historicalData?.historical_data || createMockHistoricalData(30, current_price)}
+                        height={350}
+                        highlightPatterns={true}
+                    />
+                )}
 
                 {/* Volatility Analysis */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>ボラティリティ分析</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {/* Volatility Regime */}
-                            <div className="flex items-center justify-between">
-                                <span className="font-medium">ボラティリティ状況:</span>
-                                <Badge
-                                    variant={
-                                        volatility_analysis.regime === "LOW"
-                                            ? "success"
-                                            : volatility_analysis.regime === "HIGH" ||
-                                                volatility_analysis.regime === "EXTREME"
-                                              ? "destructive"
-                                              : "warning"
-                                    }
-                                >
-                                    {volatility_analysis.regime === "LOW"
-                                        ? "低"
-                                        : volatility_analysis.regime === "MODERATE"
-                                          ? "中程度"
-                                          : volatility_analysis.regime === "HIGH"
-                                            ? "高"
-                                            : volatility_analysis.regime === "EXTREME"
-                                              ? "極高"
-                                              : volatility_analysis.regime}
-                                </Badge>
+                {!volatility_analysis || "error" in volatility_analysis ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>ボラティリティ分析</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col items-center justify-center p-8 text-center">
+                                <div className="mb-4">
+                                    <svg
+                                        className="w-16 h-16 text-neutral-400 mx-auto"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={1.5}
+                                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                                        />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-medium text-neutral-700 mb-2">
+                                    ボラティリティ分析は利用できません
+                                </h3>
+                                <p className="text-neutral-600 text-sm max-w-md">
+                                    {!volatility_analysis
+                                        ? "ボラティリティ分析データが取得できませんでした。"
+                                        : "ボラティリティ分析の実行中にエラーが発生しました。"}
+                                    テクニカル分析をご活用ください。
+                                </p>
+                                {volatility_analysis &&
+                                    "error" in volatility_analysis &&
+                                    (volatility_analysis as any).error && (
+                                        <div className="mt-3 p-3 bg-neutral-100 rounded text-xs text-neutral-500">
+                                            詳細: {(volatility_analysis as any).error}
+                                        </div>
+                                    )}
                             </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>ボラティリティ分析</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {/* Volatility Regime */}
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium">ボラティリティ状況:</span>
+                                    <Badge
+                                        variant={
+                                            volatility_analysis.regime === "LOW"
+                                                ? "success"
+                                                : volatility_analysis.regime === "HIGH" ||
+                                                    volatility_analysis.regime === "EXTREME"
+                                                  ? "destructive"
+                                                  : "warning"
+                                        }
+                                    >
+                                        {volatility_analysis.regime === "LOW"
+                                            ? "低"
+                                            : volatility_analysis.regime === "MODERATE"
+                                              ? "中程度"
+                                              : volatility_analysis.regime === "HIGH"
+                                                ? "高"
+                                                : volatility_analysis.regime === "EXTREME"
+                                                  ? "極高"
+                                                  : volatility_analysis.regime}
+                                    </Badge>
+                                </div>
 
-                            {/* ATR */}
-                            <div className="flex items-center justify-between">
-                                <Tooltip
-                                    content={
-                                        <div className="max-w-xs text-xs whitespace-pre-line">
-                                            {`ATR% (平均真の値幅率)
+                                {/* ATR */}
+                                <div className="flex items-center justify-between">
+                                    <Tooltip
+                                        content={
+                                            <div className="max-w-xs text-xs whitespace-pre-line">
+                                                {`ATR% (平均真の値幅率)
 範囲: 0%〜（上限なし）
 
 過去一定期間の価格変動幅の平均を現在価格で割ったもので、ボラティリティの大きさを示します。
@@ -554,23 +662,23 @@ MACDがシグナル線を下抜け: 売りシグナル
 7%以上: 高ボラティリティ
 
 注意: 高ボラティリティ時は利益機会が大きいが、リスクも高くなります。`}
-                                        </div>
-                                    }
-                                >
-                                    <span className="text-sm cursor-help">ATR (%):</span>
-                                </Tooltip>
-                                <span className="text-sm font-medium">
-                                    {volatility_analysis.metrics.atr_percentage.toFixed(2)}%
-                                </span>
-                            </div>
+                                            </div>
+                                        }
+                                    >
+                                        <span className="text-sm cursor-help">ATR (%):</span>
+                                    </Tooltip>
+                                    <span className="text-sm font-medium">
+                                        {volatility_analysis.metrics.atr_percentage.toFixed(2)}%
+                                    </span>
+                                </div>
 
-                            {/* Breakout Probability */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <Tooltip
-                                        content={
-                                            <div className="max-w-xs text-xs whitespace-pre-line">
-                                                {`ブレイクアウト確率
+                                {/* Breakout Probability */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <Tooltip
+                                            content={
+                                                <div className="max-w-xs text-xs whitespace-pre-line">
+                                                    {`ブレイクアウト確率
 範囲: 0〜100%
 
 現在の価格が重要なサポート・レジスタンスラインを突破する可能性を示します。
@@ -581,44 +689,96 @@ MACDがシグナル線を下抜け: 売りシグナル
 30〜70%: 不確実
 
 注意: ブレイクアウト後は大きな価格変動が予想されるため、ポジション管理に注意が必要です。`}
-                                            </div>
-                                        }
-                                    >
-                                        <span className="text-sm font-medium cursor-help">ブレイクアウト確率</span>
-                                    </Tooltip>
-                                    <span className="text-sm">
-                                        {Math.round(volatility_analysis.breakout_probability * 100)}%
-                                    </span>
+                                                </div>
+                                            }
+                                        >
+                                            <span className="text-sm font-medium cursor-help">ブレイクアウト確率</span>
+                                        </Tooltip>
+                                        <span className="text-sm">
+                                            {Math.round(volatility_analysis.breakout_probability * 100)}%
+                                        </span>
+                                    </div>
+                                    <Progress
+                                        value={volatility_analysis.breakout_probability * 100}
+                                        variant={volatility_analysis.breakout_probability > 0.6 ? "warning" : "default"}
+                                    />
                                 </div>
-                                <Progress
-                                    value={volatility_analysis.breakout_probability * 100}
-                                    variant={volatility_analysis.breakout_probability > 0.6 ? "warning" : "default"}
-                                />
-                            </div>
 
-                            {/* Volatility Summary */}
-                            <div className="text-sm text-neutral-600 bg-neutral-50 p-3 rounded">
-                                {volatility_analysis.analysis_summary}
+                                {/* Volatility Summary */}
+                                <div className="text-sm text-neutral-600 bg-neutral-50 p-3 rounded">
+                                    {volatility_analysis.analysis_summary}
+                                </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Volatility Chart */}
-                <VolatilityChart metrics={volatility_analysis.metrics} height={350} displayType="atr" />
+                {!volatility_analysis || "error" in volatility_analysis ? (
+                    <Card>
+                        <CardContent className="flex items-center justify-center h-80">
+                            <div className="text-center text-neutral-600">
+                                <p>ボラティリティチャートは利用できません</p>
+                                <p className="text-xs mt-1">ボラティリティ分析データがありません</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <VolatilityChart metrics={volatility_analysis.metrics} height={350} displayType="atr" />
+                )}
 
                 {/* ML Predictions */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>機械学習予測</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {/* Price Target */}
-                            <Tooltip
-                                content={
-                                    <div className="max-w-xs text-xs whitespace-pre-line">
-                                        {`目標株価
+                {!ml_analysis || "error" in ml_analysis ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>機械学習予測</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col items-center justify-center p-8 text-center">
+                                <div className="mb-4">
+                                    <svg
+                                        className="w-16 h-16 text-neutral-400 mx-auto"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={1.5}
+                                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                        />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-medium text-neutral-700 mb-2">
+                                    機械学習予測は利用できません
+                                </h3>
+                                <p className="text-neutral-600 text-sm max-w-md">
+                                    {!ml_analysis
+                                        ? "機械学習分析データが取得できませんでした。"
+                                        : "機械学習分析の実行中にエラーが発生したか、処理がスキップされました。"}
+                                    他の分析結果をご活用ください。
+                                </p>
+                                {ml_analysis && "error" in ml_analysis && (ml_analysis as any).error && (
+                                    <div className="mt-3 p-3 bg-neutral-100 rounded text-xs text-neutral-500">
+                                        詳細: {(ml_analysis as any).error}
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>機械学習予測</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {/* Price Target */}
+                                <Tooltip
+                                    content={
+                                        <div className="max-w-xs text-xs whitespace-pre-line">
+                                            {`目標株価
 範囲: 現在価格の±30%程度
 
 機械学習モデルが予測する将来の株価水準です。複数モデルのアンサンブル予測です。
@@ -628,31 +788,32 @@ MACDがシグナル線を下抜け: 売りシグナル
 現在価格より低い: 下落リスク
 
 注意: 予測期間は通常1〜3ヶ月程度です。マクロ経済要因は考慮されていません。`}
+                                        </div>
+                                    }
+                                >
+                                    <div className="text-center p-4 bg-primary-50 rounded-lg cursor-help">
+                                        <div className="text-2xl font-bold text-primary-700">
+                                            {formatPrice(ml_analysis.price_target)}
+                                        </div>
+                                        <div className="text-sm text-primary-600">目標株価</div>
+                                        <div className="text-xs text-neutral-600 mt-1">
+                                            現在価格から
+                                            {(
+                                                ((ml_analysis.price_target - current_price) / current_price) *
+                                                100
+                                            ).toFixed(1)}
+                                            %
+                                        </div>
                                     </div>
-                                }
-                            >
-                                <div className="text-center p-4 bg-primary-50 rounded-lg cursor-help">
-                                    <div className="text-2xl font-bold text-primary-700">
-                                        {formatPrice(ml_analysis.price_target)}
-                                    </div>
-                                    <div className="text-sm text-primary-600">目標株価</div>
-                                    <div className="text-xs text-neutral-600 mt-1">
-                                        現在価格から
-                                        {(((ml_analysis.price_target - current_price) / current_price) * 100).toFixed(
-                                            1,
-                                        )}
-                                        %
-                                    </div>
-                                </div>
-                            </Tooltip>
+                                </Tooltip>
 
-                            {/* Consensus Score */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <Tooltip
-                                        content={
-                                            <div className="max-w-xs text-xs whitespace-pre-line">
-                                                {`モデル合意度
+                                {/* Consensus Score */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <Tooltip
+                                            content={
+                                                <div className="max-w-xs text-xs whitespace-pre-line">
+                                                    {`モデル合意度
 範囲: 0〜100%
 
 複数の機械学習モデルの予測結果がどの程度一致しているかを示す指標です。
@@ -663,51 +824,54 @@ MACDがシグナル線を下抜け: 売りシグナル
 50〜80%: 中程度の信頼性
 
 注意: 合意度が高いほど予測の確実性が高いと考えられますが、市場の急変には注意が必要です。`}
-                                            </div>
+                                                </div>
+                                            }
+                                        >
+                                            <span className="text-sm font-medium cursor-help">モデル合意度</span>
+                                        </Tooltip>
+                                        <span className="text-sm">
+                                            {Math.round(ml_analysis.consensus_score * 100)}%
+                                        </span>
+                                    </div>
+                                    <Progress value={ml_analysis.consensus_score * 100} variant="default" />
+                                </div>
+
+                                {/* Trend Direction */}
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium">トレンド方向:</span>
+                                    <Badge
+                                        variant={
+                                            ml_analysis.trend_direction === "up"
+                                                ? "success"
+                                                : ml_analysis.trend_direction === "down"
+                                                  ? "destructive"
+                                                  : "secondary"
                                         }
                                     >
-                                        <span className="text-sm font-medium cursor-help">モデル合意度</span>
-                                    </Tooltip>
-                                    <span className="text-sm">{Math.round(ml_analysis.consensus_score * 100)}%</span>
-                                </div>
-                                <Progress value={ml_analysis.consensus_score * 100} variant="default" />
-                            </div>
-
-                            {/* Trend Direction */}
-                            <div className="flex items-center justify-between">
-                                <span className="font-medium">トレンド方向:</span>
-                                <Badge
-                                    variant={
-                                        ml_analysis.trend_direction === "up"
-                                            ? "success"
+                                        {ml_analysis.trend_direction === "up"
+                                            ? "上昇"
                                             : ml_analysis.trend_direction === "down"
-                                              ? "destructive"
-                                              : "secondary"
-                                    }
-                                >
-                                    {ml_analysis.trend_direction === "up"
-                                        ? "上昇"
-                                        : ml_analysis.trend_direction === "down"
-                                          ? "下降"
-                                          : "横ばい"}
-                                </Badge>
-                            </div>
+                                              ? "下降"
+                                              : "横ばい"}
+                                    </Badge>
+                                </div>
 
-                            {/* Model Performance */}
-                            <div>
-                                <h4 className="font-medium text-neutral-700 mb-2">モデル性能</h4>
-                                <div className="space-y-1">
-                                    {Object.entries(ml_analysis.model_performance).map(([model, accuracy]) => (
-                                        <div key={model} className="flex items-center justify-between text-sm">
-                                            <span className="capitalize">{model.replace("_", " ")}</span>
-                                            <span className="font-medium">{(accuracy * 100).toFixed(1)}%</span>
-                                        </div>
-                                    ))}
+                                {/* Model Performance */}
+                                <div>
+                                    <h4 className="font-medium text-neutral-700 mb-2">モデル性能</h4>
+                                    <div className="space-y-1">
+                                        {Object.entries(ml_analysis.model_performance).map(([model, accuracy]) => (
+                                            <div key={model} className="flex items-center justify-between text-sm">
+                                                <span className="capitalize">{model.replace("_", " ")}</span>
+                                                <span className="font-medium">{(accuracy * 100).toFixed(1)}%</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
             {/* Analysis Metadata */}

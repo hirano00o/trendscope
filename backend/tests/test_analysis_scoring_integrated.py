@@ -493,7 +493,9 @@ class TestIntegratedScoringEngine:
         score = scoring_engine.calculate_ml_category_score(ml_result)
         
         assert score.category == "ml"
-        assert score.confidence == ensemble_prediction.confidence
+        # Confidence is boosted by 0.1 due to high consensus (0.85 > 0.8)
+        expected_confidence = min(ensemble_prediction.confidence + Decimal("0.1"), Decimal("0.95"))
+        assert score.confidence == expected_confidence
         assert score.weight == scoring_engine.default_weights.get("ml", Decimal("0.20"))
         assert score.details is not None
         

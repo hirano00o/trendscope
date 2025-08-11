@@ -8,7 +8,7 @@ predictions, fundamental analysis, and integrated scoring.
 import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 from fastapi import HTTPException
@@ -26,19 +26,31 @@ from trendscope_backend.api.analysis import validate_symbol, validate_period, va
 logger = get_logger(__name__)
 
 
-def _convert_dataframe_to_stock_data(df: pd.DataFrame, symbol: str) -> List[StockData]:
-    """Convert pandas DataFrame to list of StockData objects.
+def _convert_dataframe_to_stock_data(df_or_list: Union[pd.DataFrame, List[StockData]], symbol: str) -> List[StockData]:
+    """Convert pandas DataFrame or list to list of StockData objects.
     
     Args:
-        df: DataFrame with OHLCV data (from yfinance)
+        df_or_list: DataFrame with OHLCV data (from yfinance) or list of StockData objects
         symbol: Stock symbol
         
     Returns:
         List of StockData objects
         
     Raises:
-        ValueError: If DataFrame structure is invalid
+        ValueError: If DataFrame structure is invalid or list is empty
     """
+    # If it's already a list of StockData objects, return as-is
+    if isinstance(df_or_list, list):
+        if not df_or_list:
+            raise ValueError("Stock data list is empty")
+        # Verify all items are StockData objects
+        if all(isinstance(item, StockData) for item in df_or_list):
+            return df_or_list
+        else:
+            raise ValueError("List contains non-StockData objects")
+    
+    # Handle DataFrame case
+    df = df_or_list
     if df.empty:
         raise ValueError("DataFrame is empty")
     
@@ -149,7 +161,16 @@ async def get_comprehensive_analysis(
                 symbol, start_date=request.start_date, end_date=request.end_date
             )
         
-        if stock_data_df is None or (hasattr(stock_data_df, 'empty') and stock_data_df.empty):
+        # Check if data is available (handle both DataFrame and list cases)
+        data_empty = False
+        if stock_data_df is None:
+            data_empty = True
+        elif isinstance(stock_data_df, list):
+            data_empty = len(stock_data_df) == 0
+        elif hasattr(stock_data_df, 'empty'):
+            data_empty = stock_data_df.empty
+        
+        if data_empty:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -159,7 +180,9 @@ async def get_comprehensive_analysis(
                 },
             )
         
-        logger.info(f"Retrieved {len(stock_data_df)} data points for analysis")
+        # Get data length for logging
+        data_length = len(stock_data_df) if hasattr(stock_data_df, '__len__') else 0
+        logger.info(f"Retrieved {data_length} data points for analysis")
         
         # Convert DataFrame to list of StockData objects
         stock_data = _convert_dataframe_to_stock_data(stock_data_df, symbol)
@@ -368,7 +391,9 @@ def _generate_integrated_analysis(
         ml_score = scoring_engine.calculate_ml_category_score(
             results["ml"]["result"]
         )
-        # Fix the current price issue
+        # Fix the current price issue - initialize details if None
+        if ml_score.details is None:
+            ml_score.details = {}
         ml_score.details["current_price"] = float(current_price)
         category_scores.append(ml_score)
     
@@ -396,14 +421,14 @@ def _generate_integrated_analysis(
     # Format the comprehensive response
     response = {
         "symbol": symbol,
-        "timestamp": datetime.now(UTC).isoformat() + "Z",
+        "analysis_date": datetime.now(UTC).isoformat() + "Z",
         "current_price": float(current_price),
         
         # Individual analysis results
         "technical_analysis": _format_technical_analysis(results.get("technical")),
         "pattern_analysis": _format_pattern_analysis(results.get("patterns")),
         "volatility_analysis": _format_volatility_analysis(results.get("volatility")),
-        "ml_analysis": _format_ml_analysis(results.get("ml")),
+        "ml_predictions": _format_ml_analysis(results.get("ml")),
         "fundamental_analysis": _format_fundamental_analysis(results.get("fundamental")),
         
         # Integrated scoring
@@ -424,6 +449,9 @@ def _generate_integrated_analysis(
             ]
         },
         
+        # Analysis summary
+        "summary": _generate_analysis_summary(integrated_score, category_scores, symbol),
+        
         # Analysis metadata
         "analysis_metadata": {
             "data_points_used": len(stock_data),
@@ -433,11 +461,8 @@ def _generate_integrated_analysis(
         }
     }
     
-    # Return wrapped response for frontend API client compatibility
-    return {
-        "success": True,
-        "data": response
-    }
+    # Return response directly for internal API consistency
+    return response
 
 
 def _format_technical_analysis(technical_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -499,6 +524,7 @@ def _format_technical_analysis(technical_data: Optional[Dict[str, Any]]) -> Dict
         signal_strength = 0.5
     
     return {
+        "success": True,
         "indicators": {
             "sma_20": float(indicators.sma_20) if indicators.sma_20 is not None else None,
             "sma_50": float(indicators.sma_50) if indicators.sma_50 is not None else None,
@@ -523,11 +549,13 @@ def _format_pattern_analysis(pattern_data: Optional[Dict[str, Any]]) -> Dict[str
     
     result = pattern_data["result"]
     return {
+        "success": True,
+        "patterns_detected": len(result.patterns),
         "patterns": [
             {
                 "pattern_type": pattern.pattern_type.value,
                 "signal": pattern.signal.value,
-                "confidence": float(pattern.confidence),
+                "confidence": float(pattern.confidence),  # Return as number
                 "start_index": int(pattern.start_index) if hasattr(pattern, 'start_index') else 0,
                 "end_index": int(pattern.end_index) if hasattr(pattern, 'end_index') else 0,
                 "description": pattern.description,
@@ -536,8 +564,8 @@ def _format_pattern_analysis(pattern_data: Optional[Dict[str, Any]]) -> Dict[str
             for pattern in result.patterns
         ],
         "overall_signal": result.overall_signal.value,
-        "signal_strength": float(result.signal_strength),
-        "pattern_score": float(result.pattern_score)
+        "signal_strength": float(result.signal_strength),  # Return as number
+        "pattern_score": float(result.pattern_score)  # Return as number
     }
 
 
@@ -548,13 +576,14 @@ def _format_volatility_analysis(volatility_data: Optional[Dict[str, Any]]) -> Di
     
     result = volatility_data["result"]
     return {
+        "success": True,
         "metrics": {
             "atr": float(result.metrics.atr),
             "atr_percentage": float(result.metrics.atr_percentage),
-            "std_dev": float(result.metrics.atr),  # Use ATR as std_dev for now
+            "std_dev": float(result.metrics.std_dev),
             "std_dev_annualized": float(result.metrics.std_dev_annualized),
-            "parkinson_volatility": float(result.metrics.atr),  # Placeholder
-            "garman_klass_volatility": float(result.metrics.atr),  # Placeholder
+            "parkinson_volatility": float(result.metrics.parkinson_volatility),
+            "garman_klass_volatility": float(result.metrics.garman_klass_volatility),
             "volatility_ratio": float(result.metrics.volatility_ratio),
             "volatility_percentile": float(result.metrics.volatility_percentile)
         },
@@ -574,23 +603,24 @@ def _format_ml_analysis(ml_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     
     result = ml_data["result"]
     return {
+        "success": True,
         "individual_predictions": [
             {
                 "model_type": pred.model_type.value,
                 "predicted_price": float(pred.predicted_price),
                 "confidence": float(pred.confidence),
-                "prediction_horizon": "SHORT_TERM",  # Default for now
-                "features_used": ["price", "volume", "technical_indicators"],  # Default features
+                "prediction_horizon": pred.prediction_horizon.value if hasattr(pred, 'prediction_horizon') else "SHORT_TERM",
+                "features_used": pred.features_used if hasattr(pred, 'features_used') else ["price", "volume"],
                 "model_accuracy": float(pred.model_accuracy)
             }
             for pred in result.individual_predictions
         ],
         "ensemble_prediction": {
-            "model_type": "ENSEMBLE",
+            "model_type": result.ensemble_prediction.model_type.value,
             "predicted_price": float(result.ensemble_prediction.predicted_price),
             "confidence": float(result.ensemble_prediction.confidence),
-            "prediction_horizon": "SHORT_TERM",
-            "features_used": ["price", "volume", "technical_indicators"],
+            "prediction_horizon": result.ensemble_prediction.prediction_horizon.value if hasattr(result.ensemble_prediction, 'prediction_horizon') else "SHORT_TERM",
+            "features_used": result.ensemble_prediction.features_used if hasattr(result.ensemble_prediction, 'features_used') else ["price", "volume"],
             "model_accuracy": float(result.ensemble_prediction.model_accuracy)
         },
         "consensus_score": float(result.consensus_score),
@@ -625,9 +655,11 @@ def _format_fundamental_analysis(fundamental_data: Optional[Dict[str, Any]]) -> 
     confidence = min(1.0, len(volume_data) / 30.0)  # More data = higher confidence
     
     return {
+        "success": True,
         "volume_analysis": {
             "current_volume": int(current_volume),
-            "average_volume": int(overall_avg),
+            "overall_average": int(overall_avg),
+            "recent_average": int(recent_avg),
             "volume_ratio": round(volume_ratio, 2),
             "volume_trend": volume_trend
         },

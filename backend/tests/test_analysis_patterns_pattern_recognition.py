@@ -217,7 +217,7 @@ class TestPatternRecognizer:
     def _create_sample_stock_data(self) -> list[StockData]:
         """Create sample stock data for testing."""
         return [
-            StockData(symbol="TEST", 
+            StockData(
                 symbol="TEST",
                 date=datetime(2023, 1, i, tzinfo=UTC),
                 open=Decimal(str(100 + i)),
@@ -235,8 +235,7 @@ class TestPatternRecognizer:
         
         # Create base data
         for i in range(1, 8):
-            data.append(StockData(symbol="TEST", 
-                symbol="TEST",
+            data.append(StockData(symbol="TEST",
                 date=datetime(2023, 1, i, tzinfo=UTC),
                 open=Decimal(str(100 + i)),
                 high=Decimal(str(105 + i)),
@@ -246,7 +245,7 @@ class TestPatternRecognizer:
             ))
         
         # Add bearish candle
-        data.append(StockData(symbol="TEST", 
+        data.append(StockData(
             symbol="TEST",
             date=datetime(2023, 1, 8, tzinfo=UTC),
             open=Decimal("110"),
@@ -257,8 +256,7 @@ class TestPatternRecognizer:
         ))
         
         # Add bullish engulfing candle
-        data.append(StockData(symbol="TEST", 
-            symbol="TEST",
+        data.append(StockData(symbol="TEST",
             date=datetime(2023, 1, 9, tzinfo=UTC),
             open=Decimal("107"),  # Below previous close
             high=Decimal("115"),
@@ -275,8 +273,7 @@ class TestPatternRecognizer:
         
         # Create base data
         for i in range(1, 8):
-            data.append(StockData(symbol="TEST", 
-                symbol="TEST",
+            data.append(StockData(symbol="TEST",
                 date=datetime(2023, 1, i, tzinfo=UTC),
                 open=Decimal(str(100 + i)),
                 high=Decimal(str(105 + i)),
@@ -313,8 +310,7 @@ class TestPatternRecognizer:
         
         # Create base data
         for i in range(1, 8):
-            data.append(StockData(symbol="TEST", 
-                symbol="TEST",
+            data.append(StockData(symbol="TEST",
                 date=datetime(2023, 1, i, tzinfo=UTC),
                 open=Decimal(str(100 + i)),
                 high=Decimal(str(105 + i)),
@@ -341,8 +337,7 @@ class TestPatternRecognizer:
         
         # Create base data
         for i in range(1, 8):
-            data.append(StockData(symbol="TEST", 
-                symbol="TEST",
+            data.append(StockData(symbol="TEST",
                 date=datetime(2023, 1, i, tzinfo=UTC),
                 open=Decimal(str(100 + i)),
                 high=Decimal(str(105 + i)),
@@ -354,10 +349,10 @@ class TestPatternRecognizer:
         # Add hammer candle (long lower shadow, short upper shadow)
         data.append(StockData(symbol="TEST", 
             date=datetime(2023, 1, 8, tzinfo=UTC),
-            open=Decimal("108.00"),
-            high=Decimal("109.00"),  # Short upper shadow
+            open=Decimal("106.00"),
+            high=Decimal("108.00"),  # Short upper shadow  
             low=Decimal("100.00"),   # Long lower shadow
-            close=Decimal("108.50"), # Close > open (bullish)
+            close=Decimal("107.00"), # Close > open (bullish), larger body
             volume=1000
         ))
         

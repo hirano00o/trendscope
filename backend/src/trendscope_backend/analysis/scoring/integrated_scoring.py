@@ -182,13 +182,13 @@ class IntegratedScoringEngine:
             Pattern score: 0.72
         """
         # Use the pattern score directly
-        score = float(pattern_result.pattern_score)
+        score = Decimal(str(pattern_result.pattern_score))
         
         # Calculate confidence based on signal strength and pattern count
-        confidence = float(pattern_result.signal_strength)
+        confidence = Decimal(str(pattern_result.signal_strength))
         if len(pattern_result.patterns) > 3:
-            confidence += 0.1  # Bonus for multiple patterns
-        confidence = min(confidence, 0.95)
+            confidence += Decimal("0.1")  # Bonus for multiple patterns
+        confidence = min(confidence, Decimal("0.95"))
         
         # Create detailed breakdown
         details = {
@@ -278,39 +278,39 @@ class IntegratedScoringEngine:
             ML score: 0.68
         """
         # Calculate score based on trend direction and prediction confidence
-        current_price = 100.0  # This should be passed from actual current price
-        predicted_price = float(ml_result.price_target)
+        current_price = Decimal("100.0")  # This should be passed from actual current price
+        predicted_price = ml_result.price_target
         
         # Calculate percentage change
         if current_price > 0:
             price_change_pct = (predicted_price - current_price) / current_price
         else:
-            price_change_pct = 0.0
+            price_change_pct = Decimal("0.0")
         
         # Convert price change to score (0.5 = no change, >0.5 = bullish, <0.5 = bearish)
-        if price_change_pct > 0.05:  # > 5% increase
-            score = 0.8
-        elif price_change_pct > 0.02:  # > 2% increase
-            score = 0.65
-        elif price_change_pct > -0.02:  # Between -2% and +2%
-            score = 0.5
-        elif price_change_pct > -0.05:  # > -5% decrease
-            score = 0.35
+        if price_change_pct > Decimal("0.05"):  # > 5% increase
+            score = Decimal("0.8")
+        elif price_change_pct > Decimal("0.02"):  # > 2% increase
+            score = Decimal("0.65")
+        elif price_change_pct > Decimal("-0.02"):  # Between -2% and +2%
+            score = Decimal("0.5")
+        elif price_change_pct > Decimal("-0.05"):  # > -5% decrease
+            score = Decimal("0.35")
         else:  # < -5% decrease
-            score = 0.2
+            score = Decimal("0.2")
         
         # Adjust score based on consensus
-        consensus_adjustment = (float(ml_result.consensus_score) - 0.5) * 0.2
+        consensus_adjustment = (ml_result.consensus_score - Decimal("0.5")) * Decimal("0.2")
         score += consensus_adjustment
-        score = max(0.0, min(1.0, float(score)))
+        score = max(Decimal("0.0"), min(Decimal("1.0"), score))
         
         # Use ensemble prediction confidence
-        confidence = float(ml_result.ensemble_prediction.confidence)
+        confidence = ml_result.ensemble_prediction.confidence
         
         # Boost confidence if multiple models agree
-        if float(ml_result.consensus_score) > 0.8:
-            confidence += 0.1
-        confidence = min(confidence, 0.95)
+        if ml_result.consensus_score > Decimal("0.8"):
+            confidence += Decimal("0.1")
+        confidence = min(confidence, Decimal("0.95"))
         
         # Create detailed breakdown
         details = {
@@ -429,26 +429,26 @@ class IntegratedScoringEngine:
             raise ValueError("Total weight cannot be zero")
         
         # Calculate weighted average score
-        weighted_sum = 0.0
-        confidence_weighted_sum = 0.0
+        weighted_sum = Decimal("0.0")
+        confidence_weighted_sum = Decimal("0.0")
         
         for score in category_scores:
-            normalized_weight = float(score.weight) / float(total_weight)
-            weighted_sum += float(score.score) * normalized_weight
-            confidence_weighted_sum += float(score.confidence) * normalized_weight
+            normalized_weight = score.weight / total_weight
+            weighted_sum += score.score * normalized_weight
+            confidence_weighted_sum += score.confidence * normalized_weight
         
         overall_score = weighted_sum
         overall_confidence = confidence_weighted_sum
         
         # Adjust confidence based on score consensus
         consensus_factor = self._calculate_consensus_factor(category_scores)
-        adjusted_confidence = overall_confidence * consensus_factor
+        adjusted_confidence = overall_confidence * Decimal(str(consensus_factor))
         
         # Generate recommendation
-        recommendation = self._generate_recommendation(overall_score, adjusted_confidence)
+        recommendation = self._generate_recommendation(float(overall_score), float(adjusted_confidence))
         
         # Assess risk level
-        risk_assessment = self._assess_risk_level(category_scores, overall_score)
+        risk_assessment = self._assess_risk_level(category_scores, float(overall_score))
         
         return IntegratedScore(
             overall_score=overall_score,

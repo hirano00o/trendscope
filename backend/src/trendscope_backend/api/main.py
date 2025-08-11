@@ -535,7 +535,8 @@ async def analyze_stock_comprehensive(
             ml_models=ml_model_list,
         )
         
-        return result
+        # Wrap result in AnalysisResponse format for frontend compatibility
+        return {"success": True, "data": result}
         
     except ValueError as e:
         # Handle date parsing errors specifically
@@ -545,9 +546,12 @@ async def analyze_stock_comprehensive(
         raise HTTPException(
             status_code=400,
             detail={
-                "error": "Invalid Parameter",
-                "message": error_msg,
-                "symbol": symbol,
+                "success": False,
+                "error": {
+                    "code": "Invalid Parameter",
+                    "message": error_msg,
+                    "details": {"symbol": symbol}
+                }
             },
         ) from e
     except HTTPException:
@@ -561,9 +565,12 @@ async def analyze_stock_comprehensive(
         raise HTTPException(
             status_code=500,
             detail={
-                "error": "Analysis Error",
-                "message": "An error occurred during comprehensive analysis",
-                "symbol": symbol,
+                "success": False,
+                "error": {
+                    "code": "Analysis Error",
+                    "message": "An error occurred during comprehensive analysis",
+                    "details": {"symbol": symbol}
+                }
             },
         ) from e
 

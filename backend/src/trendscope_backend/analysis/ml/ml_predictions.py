@@ -270,43 +270,60 @@ class MLPredictor:
         """
         features_df = df.copy()
         
+        # Adapt feature complexity based on data size
+        data_size = len(df)
+        
         # Price-based features
         features_df['returns'] = features_df['close'].pct_change()
         features_df['log_returns'] = np.log(features_df['close'] / features_df['close'].shift(1))
         features_df['price_change'] = features_df['close'] - features_df['close'].shift(1)
         
-        # Technical indicators
-        features_df['sma_5'] = features_df['close'].rolling(window=5).mean()
-        features_df['sma_10'] = features_df['close'].rolling(window=10).mean()
-        features_df['sma_20'] = features_df['close'].rolling(window=20).mean()
-        
+        # Technical indicators (adaptive windows)
+        features_df['sma_5'] = features_df['close'].rolling(window=min(5, data_size//4)).mean()
+        if data_size >= 10:
+            features_df['sma_10'] = features_df['close'].rolling(window=10).mean()
+            features_df['ema_10'] = features_df['close'].ewm(span=10).mean()
+        if data_size >= 20:
+            features_df['sma_20'] = features_df['close'].rolling(window=20).mean()
+            
         # Exponential moving averages
-        features_df['ema_5'] = features_df['close'].ewm(span=5).mean()
-        features_df['ema_10'] = features_df['close'].ewm(span=10).mean()
+        features_df['ema_5'] = features_df['close'].ewm(span=min(5, data_size//4)).mean()
         
-        # Volatility features
-        features_df['volatility'] = features_df['returns'].rolling(window=10).std()
-        features_df['volatility_ratio'] = features_df['volatility'] / features_df['volatility'].rolling(window=20).mean()
+        # Volatility features (adaptive)
+        vol_window = min(10, max(3, data_size//5))
+        features_df['volatility'] = features_df['returns'].rolling(window=vol_window).std()
         
         # Volume features
-        features_df['volume_sma'] = features_df['volume'].rolling(window=10).mean()
+        vol_sma_window = min(10, max(3, data_size//5))
+        features_df['volume_sma'] = features_df['volume'].rolling(window=vol_sma_window).mean()
         features_df['volume_ratio'] = features_df['volume'] / features_df['volume_sma']
         
         # Price position features
         features_df['high_low_ratio'] = features_df['high'] / features_df['low']
         features_df['close_position'] = (features_df['close'] - features_df['low']) / (features_df['high'] - features_df['low'])
         
-        # Momentum features
-        features_df['momentum_5'] = features_df['close'] / features_df['close'].shift(5)
-        features_df['momentum_10'] = features_df['close'] / features_df['close'].shift(10)
+        # Momentum features (adaptive lags)
+        if data_size >= 10:
+            momentum_lag = min(5, max(2, data_size//10))
+            features_df['momentum'] = features_df['close'] / features_df['close'].shift(momentum_lag)
         
-        # Lag features
-        for lag in [1, 2, 3, 5]:
+        # Lag features (reduced for smaller datasets)
+        max_lag = min(3, max(1, data_size//15))
+        for lag in range(1, max_lag + 1):
             features_df[f'close_lag_{lag}'] = features_df['close'].shift(lag)
-            features_df[f'volume_lag_{lag}'] = features_df['volume'].shift(lag)
+            if data_size >= lag + 5:  # Only add volume lag if we have sufficient data
+                features_df[f'volume_lag_{lag}'] = features_df['volume'].shift(lag)
         
         # Drop rows with NaN values
         features_df.dropna(inplace=True)
+        
+        # Ensure we have at least 5 rows for prediction
+        if len(features_df) < 5:
+            # Fallback: create minimal features
+            features_df = df.copy()
+            features_df['returns'] = features_df['close'].pct_change()
+            features_df['sma_3'] = features_df['close'].rolling(window=3).mean()
+            features_df.dropna(inplace=True)
         
         return features_df
     
@@ -348,8 +365,12 @@ class MLPredictor:
             # Fallback to simple linear trend if sklearn not available
             return self._predict_linear_trend(features_df, ModelType.RANDOM_FOREST)
         
-        # Prepare target variable (future price)
+        # Prepare target variable (adapt horizon based on available data)
         horizon_days = self.horizon_days[self.prediction_horizon]
+        max_horizon = len(features_df) // 3  # Use at most 1/3 of data for target shift
+        horizon_days = min(horizon_days, max_horizon, len(features_df) - 5)  # Keep at least 5 rows
+        horizon_days = max(1, horizon_days)  # At least 1 day ahead
+        
         features_df['target'] = features_df['close'].shift(-horizon_days)
         features_df.dropna(inplace=True)
         
@@ -417,8 +438,12 @@ class MLPredictor:
             # Fallback to simple linear trend if sklearn not available
             return self._predict_linear_trend(features_df, ModelType.SVM)
         
-        # Prepare target variable
+        # Prepare target variable (adapt horizon based on available data)
         horizon_days = self.horizon_days[self.prediction_horizon]
+        max_horizon = len(features_df) // 3  # Use at most 1/3 of data for target shift
+        horizon_days = min(horizon_days, max_horizon, len(features_df) - 5)  # Keep at least 5 rows
+        horizon_days = max(1, horizon_days)  # At least 1 day ahead
+        
         features_df['target'] = features_df['close'].shift(-horizon_days)
         features_df.dropna(inplace=True)
         
