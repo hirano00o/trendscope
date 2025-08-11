@@ -41,13 +41,34 @@ export async function GET(
             return NextResponse.json({ error: "Stock symbol is required" }, { status: 400 })
         }
 
-        // Get backend URL from environment variable
-        const backendUrl = process.env.BACKEND_API_URL || "http://trendscope-backend-service:8000"
+        // Get backend URL from environment variable with smart defaults
+        const getBackendUrl = () => {
+            // 1. Check environment variable first
+            if (process.env.BACKEND_API_URL) {
+                return process.env.BACKEND_API_URL
+            }
+            
+            // 2. Auto-detect based on environment
+            if (process.env.NODE_ENV === 'development') {
+                return "http://localhost:8000"
+            }
+            
+            // 3. Check if running in Docker Compose (service name resolution)
+            if (process.env.DOCKER_COMPOSE) {
+                return "http://backend:8000"
+            }
+            
+            // 4. Default to Kubernetes service name for production
+            return "http://trendscope-backend-service:8000"
+        }
+        
+        const backendUrl = getBackendUrl()
 
         const targetUrl = `${backendUrl}/api/v1/comprehensive/${symbol.toUpperCase()}`
 
         console.log(`[Analysis Proxy] Proxying request from browser to: ${targetUrl}`)
         console.log(`[Analysis Proxy] Symbol: ${symbol}`)
+        console.log(`[Analysis Proxy] Backend URL: ${backendUrl} (NODE_ENV: ${process.env.NODE_ENV})`)
 
         // Create AbortController for timeout handling
         const controller = new AbortController()

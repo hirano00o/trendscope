@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from decimal import Decimal
 
 from trendscope_backend.analysis.ml.ml_predictions import (
@@ -334,12 +334,14 @@ class TestMLPredictor:
             daily_return = np.random.normal(0, 0.02)
             base_price *= (1 + daily_return)
             
-            high = base_price * (1 + abs(np.random.normal(0, 0.01)))
-            low = base_price * (1 - abs(np.random.normal(0, 0.01)))
             open_price = base_price * (1 + np.random.normal(0, 0.005))
+            # Ensure high >= max(open, close) and low <= min(open, close)
+            high = max(base_price, open_price) * (1 + abs(np.random.normal(0, 0.01)))
+            low = min(base_price, open_price) * (1 - abs(np.random.normal(0, 0.01)))
             
-            data.append(StockData(symbol="TEST", 
-                date=datetime(2023, 1, i + 1, tzinfo=UTC),
+            data.append(StockData(
+                symbol="TEST",
+                date=datetime(2023, 1, 1, tzinfo=UTC) + timedelta(days=i),
                 open=Decimal(str(round(open_price, 2))),
                 high=Decimal(str(round(high, 2))),
                 low=Decimal(str(round(low, 2))),
@@ -360,12 +362,14 @@ class TestMLPredictor:
             noise = np.random.normal(0, 1.0)
             base_price = 100.0 + trend + noise
             
-            high = base_price * 1.02
-            low = base_price * 0.98
             open_price = base_price * (1 + np.random.normal(0, 0.005))
+            # Ensure high >= max(open, close) and low <= min(open, close)
+            high = max(base_price, open_price) * 1.02
+            low = min(base_price, open_price) * 0.98
             
-            data.append(StockData(symbol="TEST", 
-                date=datetime(2023, 1, i + 1, tzinfo=UTC),
+            data.append(StockData(
+                symbol="TEST",
+                date=datetime(2023, 1, 1, tzinfo=UTC) + timedelta(days=i),
                 open=Decimal(str(round(open_price, 2))),
                 high=Decimal(str(round(high, 2))),
                 low=Decimal(str(round(low, 2))),

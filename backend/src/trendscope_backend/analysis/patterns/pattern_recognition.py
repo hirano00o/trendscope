@@ -9,6 +9,7 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
+from decimal import Decimal
 
 from trendscope_backend.data.models import StockData
 from trendscope_backend.utils.logging import get_logger
@@ -66,11 +67,11 @@ class PatternDetection:
     """
     pattern_type: PatternType
     signal: PatternSignal
-    confidence: float
+    confidence: Decimal
     start_index: int
     end_index: int
     description: str
-    key_levels: Optional[Dict[str, float]] = None
+    key_levels: Optional[Dict[str, Decimal]] = None
 
 
 @dataclass
@@ -93,8 +94,8 @@ class PatternAnalysisResult:
     """
     patterns: List[PatternDetection]
     overall_signal: PatternSignal
-    signal_strength: float
-    pattern_score: float
+    signal_strength: Decimal
+    pattern_score: Decimal
 
 
 class PatternRecognizer:
@@ -113,14 +114,14 @@ class PatternRecognizer:
         Overall signal: PatternSignal.BULLISH
     """
     
-    def __init__(self, min_confidence: float = 0.6):
+    def __init__(self, min_confidence: Decimal = Decimal("0.6")):
         """Initialize the pattern recognizer.
         
         Args:
             min_confidence: Minimum confidence threshold for pattern detection
             
         Example:
-            >>> recognizer = PatternRecognizer(min_confidence=0.7)
+            >>> recognizer = PatternRecognizer(min_confidence=Decimal("0.7"))
         """
         self.min_confidence = min_confidence
         self.patterns_cache: Dict[str, PatternAnalysisResult] = {}
@@ -171,7 +172,7 @@ class PatternRecognizer:
         patterns.extend(self._detect_trend_patterns(df))
         
         # Filter patterns by confidence threshold
-        filtered_patterns = [p for p in patterns if p.confidence >= self.min_confidence]
+        filtered_patterns = [p for p in patterns if Decimal(str(p.confidence)) >= self.min_confidence]
         
         # Calculate overall signal and score
         overall_signal, signal_strength = self._calculate_overall_signal(filtered_patterns)
@@ -244,7 +245,7 @@ class PatternRecognizer:
                 patterns.append(PatternDetection(
                     pattern_type=PatternType.BULLISH_ENGULFING,
                     signal=PatternSignal.BULLISH,
-                    confidence=max(confidence, 0.6),
+                    confidence=Decimal(str(max(confidence, 0.6))),
                     start_index=i-1,
                     end_index=i,
                     description=f"Bullish engulfing pattern with {confidence:.2f} confidence"
@@ -262,7 +263,7 @@ class PatternRecognizer:
                 patterns.append(PatternDetection(
                     pattern_type=PatternType.BEARISH_ENGULFING,
                     signal=PatternSignal.BEARISH,
-                    confidence=max(confidence, 0.6),
+                    confidence=Decimal(str(max(confidence, 0.6))),
                     start_index=i-1,
                     end_index=i,
                     description=f"Bearish engulfing pattern with {confidence:.2f} confidence"
@@ -275,7 +276,7 @@ class PatternRecognizer:
                 patterns.append(PatternDetection(
                     pattern_type=PatternType.DOJI,
                     signal=PatternSignal.NEUTRAL,
-                    confidence=min(confidence, 0.9),
+                    confidence=Decimal(str(min(confidence, 0.9))),
                     start_index=i,
                     end_index=i,
                     description=f"Doji pattern indicating indecision with {confidence:.2f} confidence"
@@ -283,7 +284,7 @@ class PatternRecognizer:
             
             # Hammer pattern
             elif (df.iloc[i]['lower_shadow'] > 2 * df.iloc[i]['body'] and  # Long lower shadow
-                  df.iloc[i]['upper_shadow'] < 0.5 * df.iloc[i]['body'] and  # Short upper shadow
+                  df.iloc[i]['upper_shadow'] <= df.iloc[i]['body'] and  # Short upper shadow
                   df.iloc[i]['close'] > df.iloc[i]['open']):  # Bullish candle
                 
                 confidence = 0.75 + min(df.iloc[i]['lower_shadow'] / df.iloc[i]['body'], 3) * 0.05
@@ -291,7 +292,7 @@ class PatternRecognizer:
                 patterns.append(PatternDetection(
                     pattern_type=PatternType.HAMMER,
                     signal=PatternSignal.BULLISH,
-                    confidence=min(confidence, 0.9),
+                    confidence=Decimal(str(min(confidence, 0.9))),
                     start_index=i,
                     end_index=i,
                     description=f"Hammer pattern indicating potential reversal with {confidence:.2f} confidence"
@@ -307,7 +308,7 @@ class PatternRecognizer:
                 patterns.append(PatternDetection(
                     pattern_type=PatternType.SHOOTING_STAR,
                     signal=PatternSignal.BEARISH,
-                    confidence=min(confidence, 0.9),
+                    confidence=Decimal(str(min(confidence, 0.9))),
                     start_index=i,
                     end_index=i,
                     description=f"Shooting star pattern indicating potential reversal with {confidence:.2f} confidence"
@@ -348,11 +349,11 @@ class PatternRecognizer:
             patterns.append(PatternDetection(
                 pattern_type=PatternType.SUPPORT_LEVEL,
                 signal=PatternSignal.BULLISH,
-                confidence=confidence,
+                confidence=Decimal(str(confidence)),
                 start_index=df.index.get_loc(idx),
                 end_index=df.index.get_loc(idx),
                 description=f"Support level at {level_price:.2f} tested {tests} times",
-                key_levels={"support": float(level_price)}
+                key_levels={"support": Decimal(str(float(level_price)))}
             ))
         
         # Identify significant resistance levels
@@ -366,11 +367,11 @@ class PatternRecognizer:
             patterns.append(PatternDetection(
                 pattern_type=PatternType.RESISTANCE_LEVEL,
                 signal=PatternSignal.BEARISH,
-                confidence=confidence,
+                confidence=Decimal(str(confidence)),
                 start_index=df.index.get_loc(idx),
                 end_index=df.index.get_loc(idx),
                 description=f"Resistance level at {level_price:.2f} tested {tests} times",
-                key_levels={"resistance": float(level_price)}
+                key_levels={"resistance": Decimal(str(float(level_price)))}
             ))
         
         return patterns
@@ -428,16 +429,16 @@ class PatternRecognizer:
         patterns.append(PatternDetection(
             pattern_type=PatternType.TREND_LINE,
             signal=signal,
-            confidence=confidence,
+            confidence=Decimal(str(confidence)),
             start_index=0,
             end_index=len(df) - 1,
             description=description,
-            key_levels={"trend_slope": float(trend_slope), "r_squared": float(r_squared)}
+            key_levels={"trend_slope": Decimal(str(float(trend_slope))), "r_squared": Decimal(str(float(r_squared)))}
         ))
         
         return patterns
     
-    def _calculate_overall_signal(self, patterns: List[PatternDetection]) -> Tuple[PatternSignal, float]:
+    def _calculate_overall_signal(self, patterns: List[PatternDetection]) -> Tuple[PatternSignal, Decimal]:
         """Calculate overall signal from detected patterns.
         
         Args:
@@ -447,50 +448,50 @@ class PatternRecognizer:
             Tuple of overall signal and signal strength
         """
         if not patterns:
-            return PatternSignal.NEUTRAL, 0.5
+            return PatternSignal.NEUTRAL, Decimal("0.5")
         
         # Weight patterns by confidence and recency
-        bullish_score = 0.0
-        bearish_score = 0.0
-        total_weight = 0.0
+        bullish_score = Decimal("0.0")
+        bearish_score = Decimal("0.0")
+        total_weight = Decimal("0.0")
         
         for pattern in patterns:
-            weight = pattern.confidence
+            weight = Decimal(str(pattern.confidence))
             
             if pattern.signal == PatternSignal.STRONG_BULLISH:
-                bullish_score += weight * 2.0
+                bullish_score += weight * Decimal("2.0")
             elif pattern.signal == PatternSignal.BULLISH:
                 bullish_score += weight
             elif pattern.signal == PatternSignal.STRONG_BEARISH:
-                bearish_score += weight * 2.0
+                bearish_score += weight * Decimal("2.0")
             elif pattern.signal == PatternSignal.BEARISH:
                 bearish_score += weight
             # Neutral patterns don't contribute to either score
             
             total_weight += weight
         
-        if total_weight == 0:
-            return PatternSignal.NEUTRAL, 0.5
+        if total_weight == Decimal("0"):
+            return PatternSignal.NEUTRAL, Decimal("0.5")
         
         # Calculate net signal strength
         net_score = (bullish_score - bearish_score) / total_weight
-        signal_strength = min(1.0, abs(net_score))
+        signal_strength = min(Decimal("1.0"), abs(net_score))
         
         # Determine overall signal
-        if net_score > 0.5:
+        if net_score > Decimal("0.5"):
             overall_signal = PatternSignal.STRONG_BULLISH
-        elif net_score > 0.1:
+        elif net_score > Decimal("0.1"):
             overall_signal = PatternSignal.BULLISH
-        elif net_score < -0.5:
+        elif net_score < Decimal("-0.5"):
             overall_signal = PatternSignal.STRONG_BEARISH
-        elif net_score < -0.1:
+        elif net_score < Decimal("-0.1"):
             overall_signal = PatternSignal.BEARISH
         else:
             overall_signal = PatternSignal.NEUTRAL
         
         return overall_signal, signal_strength
     
-    def _calculate_pattern_score(self, patterns: List[PatternDetection], overall_signal: PatternSignal) -> float:
+    def _calculate_pattern_score(self, patterns: List[PatternDetection], overall_signal: PatternSignal) -> Decimal:
         """Calculate numerical score for pattern analysis.
         
         Args:
@@ -501,27 +502,27 @@ class PatternRecognizer:
             Pattern score between 0.0 and 1.0
         """
         if not patterns:
-            return 0.5
+            return Decimal("0.5")
         
         # Base score from signal strength
         signal_score_map = {
-            PatternSignal.STRONG_BULLISH: 0.8,
-            PatternSignal.BULLISH: 0.65,
-            PatternSignal.NEUTRAL: 0.5,
-            PatternSignal.BEARISH: 0.35,
-            PatternSignal.STRONG_BEARISH: 0.2
+            PatternSignal.STRONG_BULLISH: Decimal("0.8"),
+            PatternSignal.BULLISH: Decimal("0.65"),
+            PatternSignal.NEUTRAL: Decimal("0.5"),
+            PatternSignal.BEARISH: Decimal("0.35"),
+            PatternSignal.STRONG_BEARISH: Decimal("0.2")
         }
         
-        base_score = signal_score_map.get(overall_signal, 0.5)
+        base_score = signal_score_map.get(overall_signal, Decimal("0.5"))
         
         # Adjust for pattern confidence
-        avg_confidence = sum(p.confidence for p in patterns) / len(patterns)
-        confidence_adjustment = (avg_confidence - 0.5) * 0.1
+        avg_confidence = sum(Decimal(str(p.confidence)) for p in patterns) / Decimal(str(len(patterns)))
+        confidence_adjustment = (avg_confidence - Decimal("0.5")) * Decimal("0.1")
         
         # Adjust for pattern diversity
         pattern_types = set(p.pattern_type for p in patterns)
-        diversity_bonus = min(len(pattern_types) * 0.02, 0.1)
+        diversity_bonus = min(Decimal(str(len(pattern_types))) * Decimal("0.02"), Decimal("0.1"))
         
         final_score = base_score + confidence_adjustment + diversity_bonus
         
-        return max(0.0, min(1.0, final_score))
+        return max(Decimal("0.0"), min(Decimal("1.0"), final_score))

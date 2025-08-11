@@ -234,8 +234,8 @@ class TestComprehensiveAnalysis:
             
             # Check integrated score format
             integrated = result["integrated_score"]
-            assert integrated["overall_score"] == "0.68"
-            assert integrated["confidence_level"] == "0.75"
+            assert integrated["overall_score"] == 0.68
+            assert integrated["confidence_level"] == 0.75
             assert integrated["recommendation"] == "BUY"
             assert integrated["risk_assessment"] == "MODERATE"
             assert len(integrated["category_scores"]) == 5
@@ -254,9 +254,9 @@ class TestComprehensiveAnalysis:
         
         assert result["success"] is True
         assert "indicators" in result
-        assert result["indicators"]["sma_20"] == "150.25"
-        assert result["indicators"]["rsi"] == "65.5"
-        assert result["indicators"]["macd"] == "2.45"
+        assert result["indicators"]["sma_20"] == 150.25
+        assert result["indicators"]["rsi"] == 65.5
+        assert result["indicators"]["macd"] == 2.45
     
     def test_format_technical_analysis_none(self):
         """Test technical analysis formatting with None input."""
