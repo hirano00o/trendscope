@@ -349,3 +349,138 @@ func (s *Scheduler) IsRunning() bool {
 func (s *Scheduler) JobCount() int {
 	return len(s.jobs)
 }
+
+// GetNextExecutionTime calculates the next execution time based on a cron expression
+//
+// @description Cron式に基づいて次回実行時刻を計算する
+// 現在時刻から最も近い次の実行時刻を返す
+//
+// サポートするCron形式：
+// - "分 時 日 月 曜日" （例: "0 10 * * 1-5" = 平日10時）
+// - 曜日: 0=日曜日, 1=月曜日, ..., 6=土曜日
+// - 範囲: 1-5 (月曜日から金曜日)
+// - ワイルドカード: * (すべての値)
+//
+// @param {string} cronExpr Cron式（例："0 10 * * 1-5"）
+// @returns {time.Time} 次回実行予定時刻
+// @throws {error} 無効なCron式の場合
+//
+// @example
+// ```go
+// nextTime, err := GetNextExecutionTime("0 10 * * 1-5")
+// if err != nil {
+//     log.Printf("Error: %v", err)
+// } else {
+//     log.Printf("Next execution: %s", nextTime.Format("2006-01-02 15:04:05"))
+// }
+// ```
+func GetNextExecutionTime(cronExpr string) (time.Time, error) {
+	// Create a temporary scheduler for validation
+	tempScheduler := NewScheduler()
+	if err := tempScheduler.validateCronExpression(cronExpr); err != nil {
+		return time.Time{}, fmt.Errorf("invalid cron expression '%s': %w", cronExpr, err)
+	}
+
+	// Parse the cron expression
+	parts, err := tempScheduler.parseCronExpression(cronExpr)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to parse cron expression '%s': %w", cronExpr, err)
+	}
+
+	return tempScheduler.calculateNextExecution(parts, time.Now())
+}
+
+// calculateNextExecution calculates the next execution time from current time
+//
+// @description 現在時刻から次回実行時刻を計算する内部関数
+// 
+// @param {[]string} cronParts パース済みのCron式の各部分
+// @param {time.Time} from 計算の基準時刻
+// @returns {time.Time} 次回実行予定時刻
+// @throws {error} 計算に失敗した場合
+func (s *Scheduler) calculateNextExecution(cronParts []string, from time.Time) (time.Time, error) {
+	if len(cronParts) != 5 {
+		return time.Time{}, fmt.Errorf("cron expression must have 5 fields, got %d", len(cronParts))
+	}
+
+	minute, hour, day, month, weekday := cronParts[0], cronParts[1], cronParts[2], cronParts[3], cronParts[4]
+
+	// Start from the next minute
+	next := time.Date(from.Year(), from.Month(), from.Day(), from.Hour(), from.Minute()+1, 0, 0, from.Location())
+
+	// Try to find the next execution time within the next year
+	for attempts := 0; attempts < 365*24*60; attempts++ {
+		// Check if this time matches the cron expression
+		if s.matchesCronExpression(next, minute, hour, day, month, weekday) {
+			return next, nil
+		}
+		next = next.Add(1 * time.Minute)
+	}
+
+	return time.Time{}, fmt.Errorf("could not find next execution time within one year")
+}
+
+// matchesCronExpression checks if a given time matches the cron expression components
+//
+// @description 指定された時刻がCron式の各コンポーネントと一致するかチェック
+//
+// @param {time.Time} t チェック対象の時刻
+// @param {string} minute 分の指定
+// @param {string} hour 時の指定  
+// @param {string} day 日の指定
+// @param {string} month 月の指定
+// @param {string} weekday 曜日の指定
+// @returns {bool} 一致するかどうか
+func (s *Scheduler) matchesCronExpression(t time.Time, minute, hour, day, month, weekday string) bool {
+	// Check minute
+	if minute != "*" && !s.matchesNumericValue(minute, t.Minute()) {
+		return false
+	}
+
+	// Check hour
+	if hour != "*" && !s.matchesNumericValue(hour, t.Hour()) {
+		return false
+	}
+
+	// Check day
+	if day != "*" && !s.matchesNumericValue(day, t.Day()) {
+		return false
+	}
+
+	// Check month
+	if month != "*" && !s.matchesNumericValue(month, int(t.Month())) {
+		return false
+	}
+
+	// Check weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
+	if weekday != "*" {
+		currentWeekday := int(t.Weekday())
+		if !s.matchesWeekdayRange(weekday, currentWeekday) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// matchesNumericValue checks if a numeric value matches a cron field specification
+//
+// @description 数値がCronフィールドの指定と一致するかチェック
+//
+// @param {string} spec Cronフィールドの指定（例："10", "*"）
+// @param {int} value チェック対象の値
+// @returns {bool} 一致するかどうか
+func (s *Scheduler) matchesNumericValue(spec string, value int) bool {
+	if spec == "*" {
+		return true
+	}
+
+	// Check for exact match
+	if spec == fmt.Sprintf("%d", value) {
+		return true
+	}
+
+	// TODO: Add support for ranges (e.g., "10-15") and lists (e.g., "10,12,14") if needed
+	
+	return false
+}

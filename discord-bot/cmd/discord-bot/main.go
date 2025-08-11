@@ -258,26 +258,18 @@ func createAnalysisRequests(stocks []*csv.Stock) []api.AnalysisRequest {
 
 // getNextExecutionTime calculates the next execution time based on cron schedule
 //
-// @description Cron式に基づいて次回実行時刻を計算する
-// 表示用の概算時刻を返す
+// @description 設定されたCron式に基づいて次回実行時刻を計算する
+// scheduler.GetNextExecutionTime関数を使用して正確な次回実行時刻を計算
 //
 // @returns {string} 次回実行予定時刻の文字列
 func (app *App) getNextExecutionTime() string {
-	// Simple calculation for "0 10 * * 1-5" (weekdays at 10:00)
-	now := time.Now()
-
-	// If it's a weekday and before 10 AM, next execution is today at 10 AM
-	if now.Weekday() >= time.Monday && now.Weekday() <= time.Friday && now.Hour() < 10 {
-		return time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, now.Location()).Format("2006-01-02 15:04:05")
+	nextTime, err := scheduler.GetNextExecutionTime(app.config.CronSchedule)
+	if err != nil {
+		log.Printf("Failed to calculate next execution time: %v", err)
+		return "Unknown (invalid cron expression)"
 	}
-
-	// Otherwise, next execution is next Monday at 10 AM
-	daysUntilMonday := (7 - int(now.Weekday()) + int(time.Monday)) % 7
-	if daysUntilMonday == 0 {
-		daysUntilMonday = 7
-	}
-	nextMonday := now.AddDate(0, 0, daysUntilMonday)
-	return time.Date(nextMonday.Year(), nextMonday.Month(), nextMonday.Day(), 10, 0, 0, 0, nextMonday.Location()).Format("2006-01-02 15:04:05")
+	
+	return nextTime.Format("2006-01-02 15:04:05")
 }
 
 // shutdown gracefully shuts down the application
