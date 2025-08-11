@@ -122,7 +122,7 @@ class VolatilityAnalyzer:
         Risk level: RiskLevel.MODERATE
     """
     
-    def __init__(self, atr_period: int = 14, lookback_period: int = 30):
+    def __init__(self, atr_period: int = 14, lookback_period: int = 20):
         """Initialize the volatility analyzer.
         
         Args:
@@ -130,7 +130,7 @@ class VolatilityAnalyzer:
             lookback_period: Lookback period for volatility comparisons
             
         Example:
-            >>> analyzer = VolatilityAnalyzer(atr_period=21, lookback_period=60)
+            >>> analyzer = VolatilityAnalyzer(atr_period=21, lookback_period=40)
         """
         self.atr_period = atr_period
         self.lookback_period = lookback_period

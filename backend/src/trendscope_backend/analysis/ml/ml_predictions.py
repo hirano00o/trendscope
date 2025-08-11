@@ -172,8 +172,8 @@ class MLPredictor:
         if not stock_data:
             raise ValueError("Stock data cannot be empty")
         
-        if len(stock_data) < 30:
-            raise ValueError("Insufficient data for ML prediction (minimum 30 data points)")
+        if len(stock_data) < 20:
+            raise ValueError("Insufficient data for ML prediction (minimum 20 data points)")
         
         logger.info(f"Starting ML prediction for {len(stock_data)} data points")
         
@@ -374,7 +374,7 @@ class MLPredictor:
         features_df['target'] = features_df['close'].shift(-horizon_days)
         features_df.dropna(inplace=True)
         
-        if len(features_df) < 20:
+        if len(features_df) < 15:
             return self._predict_linear_trend(features_df, ModelType.RANDOM_FOREST)
         
         # Select features for training
@@ -447,7 +447,7 @@ class MLPredictor:
         features_df['target'] = features_df['close'].shift(-horizon_days)
         features_df.dropna(inplace=True)
         
-        if len(features_df) < 20:
+        if len(features_df) < 15:
             return self._predict_linear_trend(features_df, ModelType.SVM)
         
         # Select features for training
@@ -514,7 +514,7 @@ class MLPredictor:
         horizon_days = self.horizon_days[self.prediction_horizon]
         
         # Simple autoregressive model using last few prices
-        if len(prices) < 10:
+        if len(prices) < 8:
             return self._predict_linear_trend(features_df, ModelType.ARIMA)
         
         # Use exponential smoothing as ARIMA approximation
