@@ -39,7 +39,7 @@ class TestMLPredictor:
     def test_predict_stock_price_insufficient_data(self):
         """Test predict_stock_price with insufficient data."""
         predictor = MLPredictor()
-        stock_data = self._create_sample_stock_data(20)  # Less than required 30
+        stock_data = self._create_sample_stock_data(15)  # Less than required 20
         
         with pytest.raises(ValueError, match="Insufficient data for ML prediction"):
             predictor.predict_stock_price(stock_data)

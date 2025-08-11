@@ -135,7 +135,7 @@ export interface AnalysisData {
     technical_analysis: TechnicalAnalysisResult
     pattern_analysis: PatternAnalysisResult
     volatility_analysis: VolatilityAnalysisResult
-    ml_analysis: MLAnalysisResult
+    ml_predictions: MLAnalysisResult
 
     // Fundamental analysis (volume-based for now)
     fundamental_analysis: {

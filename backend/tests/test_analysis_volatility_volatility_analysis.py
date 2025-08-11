@@ -22,7 +22,7 @@ class TestVolatilityAnalyzer:
         """Test VolatilityAnalyzer initialization with default parameters."""
         analyzer = VolatilityAnalyzer()
         assert analyzer.atr_period == 14
-        assert analyzer.lookback_period == 30
+        assert analyzer.lookback_period == 20
         assert analyzer.volatility_cache == {}
     
     def test_init_custom_parameters(self):

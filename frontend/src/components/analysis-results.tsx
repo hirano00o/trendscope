@@ -41,7 +41,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
         technical_analysis,
         pattern_analysis,
         volatility_analysis,
-        ml_analysis,
+        ml_predictions,
         integrated_score,
         analysis_metadata,
     } = data
@@ -728,7 +728,7 @@ MACDがシグナル線を下抜け: 売りシグナル
                 )}
 
                 {/* ML Predictions */}
-                {!ml_analysis || "error" in ml_analysis ? (
+                {!ml_predictions || "error" in ml_predictions ? (
                     <Card>
                         <CardHeader>
                             <CardTitle>機械学習予測</CardTitle>
@@ -754,14 +754,14 @@ MACDがシグナル線を下抜け: 売りシグナル
                                     機械学習予測は利用できません
                                 </h3>
                                 <p className="text-neutral-600 text-sm max-w-md">
-                                    {!ml_analysis
+                                    {!ml_predictions
                                         ? "機械学習分析データが取得できませんでした。"
                                         : "機械学習分析の実行中にエラーが発生したか、処理がスキップされました。"}
                                     他の分析結果をご活用ください。
                                 </p>
-                                {ml_analysis && "error" in ml_analysis && (ml_analysis as any).error && (
+                                {ml_predictions && "error" in ml_predictions && (ml_predictions as any).error && (
                                     <div className="mt-3 p-3 bg-neutral-100 rounded text-xs text-neutral-500">
-                                        詳細: {(ml_analysis as any).error}
+                                        詳細: {(ml_predictions as any).error}
                                     </div>
                                 )}
                             </div>
@@ -793,13 +793,13 @@ MACDがシグナル線を下抜け: 売りシグナル
                                 >
                                     <div className="text-center p-4 bg-primary-50 rounded-lg cursor-help">
                                         <div className="text-2xl font-bold text-primary-700">
-                                            {formatPrice(ml_analysis.price_target)}
+                                            {formatPrice(ml_predictions.price_target)}
                                         </div>
                                         <div className="text-sm text-primary-600">目標株価</div>
                                         <div className="text-xs text-neutral-600 mt-1">
                                             現在価格から
                                             {(
-                                                ((ml_analysis.price_target - current_price) / current_price) *
+                                                ((ml_predictions.price_target - current_price) / current_price) *
                                                 100
                                             ).toFixed(1)}
                                             %
@@ -830,10 +830,10 @@ MACDがシグナル線を下抜け: 売りシグナル
                                             <span className="text-sm font-medium cursor-help">モデル合意度</span>
                                         </Tooltip>
                                         <span className="text-sm">
-                                            {Math.round(ml_analysis.consensus_score * 100)}%
+                                            {Math.round(ml_predictions.consensus_score * 100)}%
                                         </span>
                                     </div>
-                                    <Progress value={ml_analysis.consensus_score * 100} variant="default" />
+                                    <Progress value={ml_predictions.consensus_score * 100} variant="default" />
                                 </div>
 
                                 {/* Trend Direction */}
@@ -841,16 +841,16 @@ MACDがシグナル線を下抜け: 売りシグナル
                                     <span className="font-medium">トレンド方向:</span>
                                     <Badge
                                         variant={
-                                            ml_analysis.trend_direction === "up"
+                                            ml_predictions.trend_direction === "up"
                                                 ? "success"
-                                                : ml_analysis.trend_direction === "down"
+                                                : ml_predictions.trend_direction === "down"
                                                   ? "destructive"
                                                   : "secondary"
                                         }
                                     >
-                                        {ml_analysis.trend_direction === "up"
+                                        {ml_predictions.trend_direction === "up"
                                             ? "上昇"
-                                            : ml_analysis.trend_direction === "down"
+                                            : ml_predictions.trend_direction === "down"
                                               ? "下降"
                                               : "横ばい"}
                                     </Badge>
@@ -860,7 +860,7 @@ MACDがシグナル線を下抜け: 売りシグナル
                                 <div>
                                     <h4 className="font-medium text-neutral-700 mb-2">モデル性能</h4>
                                     <div className="space-y-1">
-                                        {Object.entries(ml_analysis.model_performance).map(([model, accuracy]) => (
+                                        {Object.entries(ml_predictions.model_performance).map(([model, accuracy]) => (
                                             <div key={model} className="flex items-center justify-between text-sm">
                                                 <span className="capitalize">{model.replace("_", " ")}</span>
                                                 <span className="font-medium">{(accuracy * 100).toFixed(1)}%</span>
