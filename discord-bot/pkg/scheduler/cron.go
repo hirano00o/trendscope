@@ -368,11 +368,14 @@ func (s *Scheduler) JobCount() int {
 // @example
 // ```go
 // nextTime, err := GetNextExecutionTime("0 10 * * 1-5")
-// if err != nil {
-//     log.Printf("Error: %v", err)
-// } else {
-//     log.Printf("Next execution: %s", nextTime.Format("2006-01-02 15:04:05"))
-// }
+//
+//	if err != nil {
+//	    log.Printf("Error: %v", err)
+//	} else {
+//
+//	    log.Printf("Next execution: %s", nextTime.Format("2006-01-02 15:04:05"))
+//	}
+//
 // ```
 func GetNextExecutionTime(cronExpr string) (time.Time, error) {
 	// Create a temporary scheduler for validation
@@ -393,7 +396,7 @@ func GetNextExecutionTime(cronExpr string) (time.Time, error) {
 // calculateNextExecution calculates the next execution time from current time
 //
 // @description 現在時刻から次回実行時刻を計算する内部関数
-// 
+//
 // @param {[]string} cronParts パース済みのCron式の各部分
 // @param {time.Time} from 計算の基準時刻
 // @returns {time.Time} 次回実行予定時刻
@@ -426,7 +429,7 @@ func (s *Scheduler) calculateNextExecution(cronParts []string, from time.Time) (
 //
 // @param {time.Time} t チェック対象の時刻
 // @param {string} minute 分の指定
-// @param {string} hour 時の指定  
+// @param {string} hour 時の指定
 // @param {string} day 日の指定
 // @param {string} month 月の指定
 // @param {string} weekday 曜日の指定
@@ -481,6 +484,6 @@ func (s *Scheduler) matchesNumericValue(spec string, value int) bool {
 	}
 
 	// TODO: Add support for ranges (e.g., "10-15") and lists (e.g., "10,12,14") if needed
-	
+
 	return false
 }

@@ -268,7 +268,7 @@ func (app *App) getNextExecutionTime() string {
 		log.Printf("Failed to calculate next execution time: %v", err)
 		return "Unknown (invalid cron expression)"
 	}
-	
+
 	return nextTime.Format("2006-01-02 15:04:05")
 }
 

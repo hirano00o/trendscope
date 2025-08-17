@@ -157,27 +157,34 @@ func (c *WebhookClient) SendStockAnalysis(ctx context.Context, results []StockRe
 // createAnalysisEmbed creates a Discord embed for stock analysis results
 //
 // @description 株式分析結果用のDiscord埋め込みメッセージを作成する
-// マークダウン表形式で企業名をリンク化したフォーマットでデータを整形
+// 企業別フォーマットで太字見出しとサブヘッダー形式でデータを整形
 //
 // @param {[]StockResult} results 分析結果のスライス
 // @returns {Embed} Discord埋め込みメッセージ
 func (c *WebhookClient) createAnalysisEmbed(results []StockResult) Embed {
 	var description strings.Builder
 
-	// マークダウン表のヘッダー
-	description.WriteString("| シンボル | 企業名 | 信頼度 | スコア |\n")
-	description.WriteString("|---------|--------|--------|--------|\n")
-
-	// データ行を追加（企業名をリンク化）
+	// 各企業ごとに太字見出し + サブヘッダー形式で表示
 	for _, result := range results {
-		line := fmt.Sprintf("| %s | [%s](%s) | %.3f | %.3f |\n",
-			result.Symbol,
-			result.CompanyName,
-			result.KabutanURL,
+		// Extract stock code from symbol (remove .T suffix)
+		stockCode := strings.TrimSuffix(result.Symbol, ".T")
+
+		// Generate URLs for 3 services
+		kabutanURL := fmt.Sprintf("https://kabutan.jp/stock/?code=%s", stockCode)
+		yahooURL := fmt.Sprintf("https://finance.yahoo.co.jp/quote/%s/bbs", result.Symbol)
+		trendscopeURL := fmt.Sprintf("https://trendscope.hirano00o.dev/analysis/%s", result.Symbol)
+
+		// 企業名(シンボル)の太字見出し
+		description.WriteString(fmt.Sprintf("**%s(%s)**\n", result.CompanyName, result.Symbol))
+
+		// サブヘッダー形式で信頼度、スコア、リンクを表示
+		description.WriteString(fmt.Sprintf("-# 信頼度: %.5f, スコア: %.5f, [株探](%s), [Yahoo](%s), [trendscope](%s)\n\n",
 			result.Confidence,
 			result.Score,
-		)
-		description.WriteString(line)
+			kabutanURL,
+			yahooURL,
+			trendscopeURL,
+		))
 	}
 
 	// Color: Green for positive trend
