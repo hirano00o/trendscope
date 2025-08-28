@@ -22,7 +22,7 @@ TrendScopeの日本株データベースを更新する高性能バッチ処理�
 - **環境変数設定**: 設定の外部化
 - **永続化ストレージ**: NFS対応のデータ永続化
 - **Graceful Shutdown**: 安全な処理中断対応
-- **監視機能**: Prometheus/Grafanaによる監視
+- **セキュリティ対応**: readOnlyRootFilesystem、非root実行
 
 ### 📊 運用機能
 - **進捗報告**: リアルタイム処理状況表示
@@ -131,33 +131,18 @@ data:
   BATCH_LOG_LEVEL: "INFO"           # ログレベル
 ```
 
-### 3. シークレットの設定
-
-`k8s/secret.yaml`にAPIキーを設定（オプション）：
+### 3. デプロイ実行
 
 ```bash
-# APIキーのBase64エンコード
-echo -n "your-api-key" | base64
-
-# secret.yamlに設定
-```
-
-### 4. デプロイ実行
-
-```bash
-# Kustomizeを使用したデプロイ
-kubectl apply -k k8s/
-
-# 個別デプロイ
+# デプロイ実行
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
-kubectl apply -f k8s/secret.yaml
 kubectl apply -f k8s/pvc.yaml
 kubectl apply -f k8s/rbac.yaml
 kubectl apply -f k8s/cronjob.yaml
 ```
 
-### 5. 動作確認
+### 4. 動作確認
 
 ```bash
 # CronJobの確認
