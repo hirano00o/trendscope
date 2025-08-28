@@ -9,6 +9,7 @@ metadata:
 spec:
   backoffLimit: 2
   activeDeadlineSeconds: 3600  # 1時間でタイムアウト
+  ttlSecondsAfterFinished: 86400  # 完了後24時間で自動削除
   template:
     metadata:
       labels:
@@ -22,8 +23,18 @@ spec:
         fsGroup: 1000
       containers:
       - name: stock-batch
-        image: trendscope/stock-db-batch:latest
+        image: trendscope/stock-db-batch:v1.0.0
         imagePullPolicy: Always
+        
+        # セキュリティコンテキスト
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         
         # リソース制限
         resources:
