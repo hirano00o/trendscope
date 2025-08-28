@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: stock-batch
+
+resources:
+- namespace.yaml
+- configmap.yaml
+- secret.yaml
+- pvc.yaml
+- rbac.yaml
+- cronjob.yaml
+- monitoring.yaml
+
+commonLabels:
+  app: trendscope-stock-db-batch
+  version: v1.0.0
+
+images:
+- name: trendscope/stock-db-batch
+  newTag: latest
+
+# 設定のカスタマイズ例
+patchesStrategicMerge:
+- |-
+  apiVersion: batch/v1
+  kind: CronJob
+  metadata:
+    name: stock-batch-job
+  spec:
+    jobTemplate:
+      spec:
+        template:
+          spec:
+            serviceAccountName: stock-batch-sa

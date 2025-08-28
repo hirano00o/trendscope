@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stock-batch
+  labels:
+    name: stock-batch
+    app: trendscope-stock-db-batch
+---

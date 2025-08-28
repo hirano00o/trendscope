@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stock-batch-data
+  namespace: stock-batch
+  labels:
+    app: trendscope-stock-db-batch
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: nfs-client  # NFS StorageClass を想定
+---
