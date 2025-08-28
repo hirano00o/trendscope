@@ -116,7 +116,7 @@ uv run python -m stock_batch.main
 kubectl get storageclass nfs-client
 
 # 名前空間作成（必要に応じて）
-kubectl create namespace stock-batch
+kubectl create namespace trendscope-stock-batch
 ```
 
 ### 2. 設定のカスタマイズ
@@ -161,16 +161,16 @@ kubectl apply -f k8s/cronjob.yaml
 
 ```bash
 # CronJobの確認
-kubectl get cronjob -n stock-batch
+kubectl get cronjob -n trendscope-stock-batch
 
 # 手動実行テスト
-kubectl create job --from=cronjob/stock-batch-job manual-test -n stock-batch
+kubectl create job --from=cronjob/trendscope-stock-batch-job manual-test -n trendscope-stock-batch
 
 # ログ確認
-kubectl logs -f job/manual-test -n stock-batch
+kubectl logs -f job/manual-test -n trendscope-stock-batch
 
 # PVC確認
-kubectl get pvc -n stock-batch
+kubectl get pvc -n trendscope-stock-batch
 ```
 
 ## 設定項目
@@ -212,13 +212,13 @@ CREATE TABLE company (
 
 ```bash
 # CronJob実行ログ
-kubectl logs -f cronjob/stock-batch-job -n stock-batch
+kubectl logs -f cronjob/trendscope-stock-batch-job -n trendscope-stock-batch
 
 # 特定Jobのログ
-kubectl logs -f job/<job-name> -n stock-batch
+kubectl logs -f job/<job-name> -n trendscope-stock-batch
 
 # 全体的な状況確認
-kubectl get events -n stock-batch --sort-by='.lastTimestamp'
+kubectl get events -n trendscope-stock-batch --sort-by='.lastTimestamp'
 ```
 
 ### パフォーマンス監視

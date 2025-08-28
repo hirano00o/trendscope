@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: stock-batch-manual
-  namespace: stock-batch
+  namespace: trendscope-stock-batch
   labels:
     app: trendscope-stock-db-batch
     job-type: manual-run

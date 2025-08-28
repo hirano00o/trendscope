@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: stock-batch-config
-  namespace: stock-batch
+  namespace: trendscope-stock-batch
   labels:
     app: trendscope-stock-db-batch
 data:

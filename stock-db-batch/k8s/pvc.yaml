@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: stock-batch-data
-  namespace: stock-batch
+  namespace: trendscope-stock-batch
   labels:
     app: trendscope-stock-db-batch
 spec:

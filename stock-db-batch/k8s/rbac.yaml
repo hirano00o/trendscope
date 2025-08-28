@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: stock-batch-sa
-  namespace: stock-batch
+  namespace: trendscope-stock-batch
   labels:
     app: trendscope-stock-db-batch
 ---
@@ -10,7 +10,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: stock-batch-role
-  namespace: stock-batch
+  namespace: trendscope-stock-batch
   labels:
     app: trendscope-stock-db-batch
 rules:
@@ -25,13 +25,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: stock-batch-rolebinding
-  namespace: stock-batch
+  namespace: trendscope-stock-batch
   labels:
     app: trendscope-stock-db-batch
 subjects:
 - kind: ServiceAccount
   name: stock-batch-sa
-  namespace: stock-batch
+  namespace: trendscope-stock-batch
 roleRef:
   kind: Role
   name: stock-batch-role
