@@ -50,8 +50,8 @@ ENV PYTHONPATH="/app/src"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Create data directory
-RUN mkdir -p /data && chown stockbatch:stockbatch /data
+# Create data directory and temporary directory
+RUN mkdir -p /data /tmp/app && chown stockbatch:stockbatch /data /tmp/app
 
 # Switch to non-root user
 USER stockbatch

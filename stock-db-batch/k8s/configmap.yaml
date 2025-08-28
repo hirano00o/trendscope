@@ -29,8 +29,7 @@ data:
   # ログ設定
   BATCH_LOG_LEVEL: "INFO"
   
-  # 監視設定
+  # 動作設定
   BATCH_ENABLE_PROGRESS: "true"
-  BATCH_ENABLE_MONITORING: "true"
   BATCH_ENABLE_GRACEFUL_SHUTDOWN: "true"
 ---

@@ -1,6 +1,6 @@
 [project]
 name = "trendscope-stock-db-batch"
-version = "0.1.0"
+version = "1.0.0"
 description = "Stock database batch application for TrendScope"
 requires-python = ">=3.12"
 dependencies = [
