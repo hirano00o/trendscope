@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 TrendScope 株式データバッチ処理アプリケーション
 
