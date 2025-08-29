@@ -82,7 +82,7 @@ spec:
               failureThreshold: 3
             
             # コマンド
-            command: ["/usr/local/bin/python"]
+            command: ["python"]
             args: ["-m", "stock_batch.main"]
             
             # 環境変数の個別設定
@@ -96,15 +96,4 @@ spec:
           - name: data-volume
             persistentVolumeClaim:
               claimName: stock-batch-data
-          
-          # Nodeセレクター（オプション）
-          # nodeSelector:
-          #   workload-type: batch
-          
-          # Toleration（オプション）
-          # tolerations:
-          # - key: "batch-only"
-          #   operator: "Equal"
-          #   value: "true"
-          #   effect: "NoSchedule"
 ---
