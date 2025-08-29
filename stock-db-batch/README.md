@@ -109,17 +109,7 @@ uv run python -m stock_batch.main
 
 ## Kubernetes デプロイ
 
-### 1. 前提条件の確認
-
-```bash
-# NFS StorageClassの確認
-kubectl get storageclass nfs-client
-
-# 名前空間作成（必要に応じて）
-kubectl create namespace trendscope-stock-batch
-```
-
-### 2. 設定のカスタマイズ
+### 1. 設定のカスタマイズ
 
 `k8s/configmap.yaml`を編集して環境に合わせて設定を調整：
 
@@ -131,7 +121,7 @@ data:
   BATCH_LOG_LEVEL: "INFO"           # ログレベル
 ```
 
-### 3. デプロイ実行
+### 2. デプロイ実行
 
 ```bash
 # デプロイ実行
@@ -142,7 +132,7 @@ kubectl apply -f k8s/rbac.yaml
 kubectl apply -f k8s/cronjob.yaml
 ```
 
-### 4. 動作確認
+### 3. 動作確認
 
 ```bash
 # CronJobの確認
@@ -208,9 +198,18 @@ kubectl get events -n trendscope-stock-batch --sort-by='.lastTimestamp'
 
 ### パフォーマンス監視
 
-- **Prometheus**: メトリクス収集
-- **Grafana**: ダッシュボード表示
-- **アラート**: 処理失敗や異常な実行時間の通知
+基本的な監視はKubernetesの標準機能で対応：
+
+```bash
+# リソース使用量確認
+kubectl top pods -n trendscope-stock-batch
+
+# CronJob実行履歴
+kubectl get jobs -n trendscope-stock-batch
+
+# イベント監視
+kubectl get events -n trendscope-stock-batch --sort-by='.lastTimestamp'
+```
 
 ### よくある問題と解決策
 
