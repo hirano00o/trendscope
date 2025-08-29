@@ -11,5 +11,5 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: nfs-client  # NFS StorageClass を想定
+  storageClassName: nfs-client
 ---
