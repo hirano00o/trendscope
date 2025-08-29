@@ -23,7 +23,7 @@ spec:
         fsGroup: 1000
       containers:
       - name: stock-batch
-        image: trendscope/stock-db-batch:v1.0.0
+        image: ghcr.io/hirano00o/trendscope-stock-db-batch:v1.0.0
         imagePullPolicy: Always
         
         # セキュリティコンテキスト
