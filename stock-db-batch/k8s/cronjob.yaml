@@ -6,8 +6,8 @@ metadata:
   labels:
     app: trendscope-stock-db-batch
 spec:
-  # 毎日平日17:00 JST (08:00 UTC) に実行
-  schedule: "0 8 * * 1-5"
+  # 毎日平日17:00 JST に実行
+  schedule: "0 17 * * 1-5"
   timeZone: "Asia/Tokyo"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 5
