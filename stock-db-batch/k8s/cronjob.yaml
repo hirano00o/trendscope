@@ -83,7 +83,7 @@ spec:
             
             # コマンド
             command: ["python"]
-            args: ["-m", "stock_batch.main"]
+            args: ["main.py"]
             
             # 環境変数の個別設定
             env:

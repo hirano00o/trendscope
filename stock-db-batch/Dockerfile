@@ -63,4 +63,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c "import sys; sys.exit(0)"
 
 # Entry point
-ENTRYPOINT ["python", "-m", "stock_batch.main"]
+ENTRYPOINT ["python", "main.py"]
