@@ -126,6 +126,84 @@ class TestCSVCompanyData:
         symbol = csv_data.to_yfinance_symbol()
         assert symbol == "130A.T"
 
+    def test_csv_to_symbol_conversion_sapporo_market(self) -> None:
+        """札幌証券取引所のシンボル変換テスト（XXXX → XXXX.S）"""
+        csv_data = CSVCompanyData(
+            code="3698",
+            name="CRI・ミドルウェア",
+            market="札P",
+            current_value="1220.0",
+            change_percent="-0.49%",
+        )
+
+        symbol = csv_data.to_yfinance_symbol()
+        assert symbol == "3698.S"
+
+    def test_csv_to_symbol_conversion_nagoya_market(self) -> None:
+        """名古屋証券取引所のシンボル変換テスト（XXXX → XXXX.N）"""
+        csv_data = CSVCompanyData(
+            code="2200",
+            name="テスト名証企業",
+            market="名P",
+            current_value="500.0",
+            change_percent="+1.2%",
+        )
+
+        symbol = csv_data.to_yfinance_symbol()
+        assert symbol == "2200.N"
+
+    def test_csv_to_symbol_conversion_fukuoka_market(self) -> None:
+        """福岡証券取引所のシンボル変換テスト（XXXX → XXXX.F）"""
+        csv_data = CSVCompanyData(
+            code="8885",
+            name="テスト福証企業",
+            market="福P",
+            current_value="750.0",
+            change_percent="-2.1%",
+        )
+
+        symbol = csv_data.to_yfinance_symbol()
+        assert symbol == "8885.F"
+
+    def test_csv_to_symbol_conversion_osaka_market(self) -> None:
+        """大阪証券取引所のシンボル変換テスト（XXXX → XXXX.OS）"""
+        csv_data = CSVCompanyData(
+            code="9999",
+            name="テスト大証企業",
+            market="大P",
+            current_value="300.0",
+            change_percent="+0.5%",
+        )
+
+        symbol = csv_data.to_yfinance_symbol()
+        assert symbol == "9999.OS"
+
+    def test_csv_to_symbol_conversion_unknown_market(self) -> None:
+        """未知の市場区分でのデフォルト変換テスト（XXXX → XXXX.T）"""
+        csv_data = CSVCompanyData(
+            code="1234",
+            name="未知の市場企業",
+            market="未知",
+            current_value="100.0",
+            change_percent="0%",
+        )
+
+        symbol = csv_data.to_yfinance_symbol()
+        assert symbol == "1234.T"  # デフォルトは東京証券取引所
+
+    def test_csv_to_symbol_conversion_empty_market(self) -> None:
+        """空の市場区分でのデフォルト変換テスト（XXXX → XXXX.T）"""
+        csv_data = CSVCompanyData(
+            code="1234",
+            name="市場未指定企業",
+            market="",
+            current_value="100.0",
+            change_percent="0%",
+        )
+
+        symbol = csv_data.to_yfinance_symbol()
+        assert symbol == "1234.T"  # デフォルトは東京証券取引所
+
     def test_csv_parse_current_price_float(self) -> None:
         """現在値の浮動小数点変換テスト"""
         csv_data = CSVCompanyData(

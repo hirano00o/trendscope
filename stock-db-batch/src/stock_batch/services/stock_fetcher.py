@@ -72,7 +72,8 @@ class StockFetcher:
     """
 
     # 日本株シンボルの正規表現パターン
-    JAPAN_SYMBOL_PATTERN = re.compile(r"^[A-Z0-9]{3,4}\.T$")
+    # 対応取引所: .T(東京), .S(札幌), .F(福岡), .N(名古屋), .OS(大阪)
+    JAPAN_SYMBOL_PATTERN = re.compile(r"^[A-Z0-9]{3,4}\.(T|S|F|N|OS)$")
 
     def __init__(self, max_retries: int = 3, retry_delay: float = 1.0) -> None:
         """StockFetcher を初期化する
@@ -250,7 +251,8 @@ class StockFetcher:
     def is_valid_symbol(self, symbol: str) -> bool:
         """株式シンボルの形式を検証する
 
-        日本株の形式（XXXX.T）かチェックする。
+        日本株の形式かチェックする。
+        対応する取引所識別子: .T(東京), .S(札幌), .F(福岡), .N(名古屋), .OS(大阪)
 
         Args:
             symbol: 検証する株式シンボル
@@ -261,6 +263,8 @@ class StockFetcher:
         Example:
             >>> fetcher = StockFetcher()
             >>> fetcher.is_valid_symbol("1332.T")
+            True
+            >>> fetcher.is_valid_symbol("3698.S")
             True
             >>> fetcher.is_valid_symbol("INVALID")
             False
