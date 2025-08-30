@@ -129,6 +129,13 @@ kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/pvc.yaml
 kubectl apply -f k8s/rbac.yaml
+
+# CSVデータ用ConfigMap作成
+kubectl create configmap csv-data \
+  --from-file=stocks.csv=k8s/sample-stocks.csv \
+  -n trendscope-stock-batch
+
+# CronJob作成
 kubectl apply -f k8s/cronjob.yaml
 ```
 

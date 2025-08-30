@@ -60,14 +60,14 @@ spec:
             envFrom:
             - configMapRef:
                 name: stock-batch-config
-            - secretRef:
-                name: stock-batch-secrets
-                optional: true
             
             # ボリュームマウント
             volumeMounts:
             - name: data-volume
               mountPath: /data
+            - name: csv-data
+              mountPath: /data/stocks.csv
+              subPath: stocks.csv
             
             # ヘルスチェック
             livenessProbe:
@@ -96,4 +96,7 @@ spec:
           - name: data-volume
             persistentVolumeClaim:
               claimName: stock-batch-data
+          - name: csv-data
+            configMap:
+              name: csv-data
 ---
