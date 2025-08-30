@@ -221,6 +221,12 @@ class TestStockFetcher:
         assert fetcher.is_valid_symbol("8885.F") is True  # 福岡証券取引所
         assert fetcher.is_valid_symbol("9999.OS") is True  # 大阪証券取引所
 
+        # 有効な日本株シンボル（その他の取引所）
+        assert fetcher.is_valid_symbol("3698.S") is True  # 札幌証券取引所
+        assert fetcher.is_valid_symbol("2200.N") is True  # 名古屋証券取引所
+        assert fetcher.is_valid_symbol("8885.F") is True  # 福岡証券取引所
+        assert fetcher.is_valid_symbol("9999.OS") is True  # 大阪証券取引所
+
         # 無効なシンボル
         assert fetcher.is_valid_symbol("") is False
         assert fetcher.is_valid_symbol("1332") is False  # 取引所識別子がない
