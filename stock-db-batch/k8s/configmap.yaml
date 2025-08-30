@@ -13,7 +13,7 @@ data:
   BATCH_CSV_PATH: "/csv-data/stocks.csv"
   
   # 処理設定
-  BATCH_CHUNK_SIZE: "1000"
+  BATCH_CHUNK_SIZE: "500"
   BATCH_ENABLE_PARALLEL: "true"
   BATCH_MAX_WORKERS: "4"
   
@@ -32,4 +32,7 @@ data:
   # 動作設定
   BATCH_ENABLE_PROGRESS: "true"
   BATCH_ENABLE_GRACEFUL_SHUTDOWN: "true"
+  
+  # yfinanceキャッシュ設定
+  YFINANCE_CACHE_DIR: "/tmp/app/yfinance_cache"
 ---

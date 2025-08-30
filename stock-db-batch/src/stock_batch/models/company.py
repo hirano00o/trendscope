@@ -100,7 +100,7 @@ class CSVCompanyData:
         "東": ".T",  # 東京証券取引所
         "福": ".F",  # 福岡証券取引所
         "名": ".N",  # 名古屋証券取引所
-        "大": ".OS", # 大阪証券取引所
+        "大": ".OS",  # 大阪証券取引所
     }
 
     code: str
@@ -120,11 +120,11 @@ class CSVCompanyData:
         """CSV株式コードをyfinanceシンボルに変換する
 
         市場区分の1文字目に基づいて適切な取引所識別子を付加してyfinance対応シンボルにする
-        
+
         識別子マッピング:
         - 札 → .S（札幌証券取引所）
         - 東 → .T（東京証券取引所）
-        - 福 → .F（福岡証券取引所）  
+        - 福 → .F（福岡証券取引所）
         - 名 → .N（名古屋証券取引所）
         - 大 → .OS（大阪証券取引所）
         - その他 → .T（デフォルト：東京証券取引所）
@@ -137,8 +137,10 @@ class CSVCompanyData:
             >>> symbol = csv_data.to_yfinance_symbol()
             >>> print(symbol)
             "1332.T"
-            
-            >>> csv_data = CSVCompanyData("3698", "CRI・ミドルウェア", "札P", "1220.0", "-0.49%")
+
+            >>> csv_data = CSVCompanyData(
+            ...     "3698", "CRI・ミドルウェア", "札P", "1220.0", "-0.49%"
+            ... )
             >>> symbol = csv_data.to_yfinance_symbol()
             >>> print(symbol)
             "3698.S"
@@ -146,13 +148,13 @@ class CSVCompanyData:
         if not self.market:
             # 市場区分が空の場合は東京証券取引所をデフォルトとする
             return f"{self.code}.T"
-        
+
         # 市場区分の1文字目を取得
         market_prefix = self.market[0]
-        
+
         # マッピングから対応する識別子を取得（見つからない場合は.Tをデフォルト）
         exchange_suffix = self.EXCHANGE_MAPPING.get(market_prefix, ".T")
-        
+
         return f"{self.code}{exchange_suffix}"
 
     def parse_current_price(self) -> float:

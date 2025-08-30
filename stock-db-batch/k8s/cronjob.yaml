@@ -50,11 +50,11 @@ spec:
             # リソース制限
             resources:
               requests:
-                memory: "512Mi"
-                cpu: "250m"
-              limits:
                 memory: "1Gi"
                 cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "1000m"
             
             # 環境変数
             envFrom:
@@ -67,18 +67,20 @@ spec:
               mountPath: /data
             - name: csv-data
               mountPath: /csv-data
+            - name: tmp-cache
+              mountPath: /tmp/app
             
-            # ヘルスチェック
+            # ヘルスチェック（バッチ処理用に調整）
             livenessProbe:
               exec:
                 command:
                 - /bin/sh
                 - -c
-                - "ps aux | grep -v grep | grep python"
-              initialDelaySeconds: 30
-              periodSeconds: 60
-              timeoutSeconds: 10
-              failureThreshold: 3
+                - "pgrep python || test -f /tmp/app/.batch_running"
+              initialDelaySeconds: 60
+              periodSeconds: 120
+              timeoutSeconds: 30
+              failureThreshold: 5
             
             # コマンド
             command: ["python"]
@@ -98,4 +100,8 @@ spec:
           - name: csv-data
             configMap:
               name: csv-data
+          - name: tmp-cache
+            emptyDir:
+              medium: Memory
+              sizeLimit: 100Mi
 ---
