@@ -77,7 +77,7 @@ class CSVCompanyData:
     Attributes:
         code: 株式コード（例: 1332, 130A）
         name: 企業名
-        market: 市場区分（東P、東G、東S等）
+        market: 市場区分（東P、東G、東S、札P、名P、大P、福P等）
         current_value: 現在値（文字列）
         change_percent: 前日比（%）（文字列）
 
@@ -93,6 +93,15 @@ class CSVCompanyData:
         >>> print(symbol)
         "1332.T"
     """
+
+    # 市場区分から取引所識別子へのマッピング
+    EXCHANGE_MAPPING = {
+        "札": ".S",  # 札幌証券取引所
+        "東": ".T",  # 東京証券取引所
+        "福": ".F",  # 福岡証券取引所
+        "名": ".N",  # 名古屋証券取引所
+        "大": ".OS", # 大阪証券取引所
+    }
 
     code: str
     name: str
@@ -110,7 +119,15 @@ class CSVCompanyData:
     def to_yfinance_symbol(self) -> str:
         """CSV株式コードをyfinanceシンボルに変換する
 
-        日本株式の場合、コードに ".T" を付加してyfinance対応シンボルにする
+        市場区分の1文字目に基づいて適切な取引所識別子を付加してyfinance対応シンボルにする
+        
+        識別子マッピング:
+        - 札 → .S（札幌証券取引所）
+        - 東 → .T（東京証券取引所）
+        - 福 → .F（福岡証券取引所）  
+        - 名 → .N（名古屋証券取引所）
+        - 大 → .OS（大阪証券取引所）
+        - その他 → .T（デフォルト：東京証券取引所）
 
         Returns:
             yfinance対応の株式シンボル
@@ -120,8 +137,23 @@ class CSVCompanyData:
             >>> symbol = csv_data.to_yfinance_symbol()
             >>> print(symbol)
             "1332.T"
+            
+            >>> csv_data = CSVCompanyData("3698", "CRI・ミドルウェア", "札P", "1220.0", "-0.49%")
+            >>> symbol = csv_data.to_yfinance_symbol()
+            >>> print(symbol)
+            "3698.S"
         """
-        return f"{self.code}.T"
+        if not self.market:
+            # 市場区分が空の場合は東京証券取引所をデフォルトとする
+            return f"{self.code}.T"
+        
+        # 市場区分の1文字目を取得
+        market_prefix = self.market[0]
+        
+        # マッピングから対応する識別子を取得（見つからない場合は.Tをデフォルト）
+        exchange_suffix = self.EXCHANGE_MAPPING.get(market_prefix, ".T")
+        
+        return f"{self.code}{exchange_suffix}"
 
     def parse_current_price(self) -> float:
         """現在値文字列を浮動小数点数に変換する

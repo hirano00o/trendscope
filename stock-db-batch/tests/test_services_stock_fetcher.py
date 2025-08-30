@@ -207,16 +207,23 @@ class TestStockFetcher:
         """株式シンボル形式検証のテスト"""
         fetcher = StockFetcher()
 
-        # 有効な日本株シンボル
+        # 有効な日本株シンボル（東京証券取引所）
         assert fetcher.is_valid_symbol("1332.T") is True
         assert fetcher.is_valid_symbol("130A.T") is True
         assert fetcher.is_valid_symbol("9999.T") is True
+        
+        # 有効な日本株シンボル（その他の取引所）
+        assert fetcher.is_valid_symbol("3698.S") is True  # 札幌証券取引所
+        assert fetcher.is_valid_symbol("2200.N") is True  # 名古屋証券取引所
+        assert fetcher.is_valid_symbol("8885.F") is True  # 福岡証券取引所
+        assert fetcher.is_valid_symbol("9999.OS") is True  # 大阪証券取引所
 
         # 無効なシンボル
         assert fetcher.is_valid_symbol("") is False
-        assert fetcher.is_valid_symbol("1332") is False  # .Tがない
+        assert fetcher.is_valid_symbol("1332") is False  # 取引所識別子がない
         assert fetcher.is_valid_symbol("INVALID") is False
         assert fetcher.is_valid_symbol("1332.T.") is False  # 余分な文字
+        assert fetcher.is_valid_symbol("1332.X") is False  # 無効な取引所識別子
 
     def test_get_fetcher_stats(self) -> None:
         """フェッチャー統計情報取得のテスト"""
