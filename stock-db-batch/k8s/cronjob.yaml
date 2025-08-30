@@ -1,0 +1,101 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: stock-batch-job
+  namespace: trendscope-stock-batch
+  labels:
+    app: trendscope-stock-db-batch
+spec:
+  # 毎日平日17:00 JST に実行
+  schedule: "0 17 * * 1-5"
+  timeZone: "Asia/Tokyo"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        app: trendscope-stock-db-batch
+        job-type: stock-batch
+    spec:
+      # Job失敗時のリトライ設定
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600  # 1時間でタイムアウト
+      template:
+        metadata:
+          labels:
+            app: trendscope-stock-db-batch
+            job-type: stock-batch
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          containers:
+          - name: stock-batch
+            image: ghcr.io/hirano00o/trendscope-stock-db-batch:latest
+            imagePullPolicy: Always
+            
+            # セキュリティコンテキスト
+            securityContext:
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1000
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+            
+            # リソース制限
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+            
+            # 環境変数
+            envFrom:
+            - configMapRef:
+                name: stock-batch-config
+            
+            # ボリュームマウント
+            volumeMounts:
+            - name: data-volume
+              mountPath: /data
+            - name: csv-data
+              mountPath: /csv-data
+            
+            # ヘルスチェック
+            livenessProbe:
+              exec:
+                command:
+                - /bin/sh
+                - -c
+                - "ps aux | grep -v grep | grep python"
+              initialDelaySeconds: 30
+              periodSeconds: 60
+              timeoutSeconds: 10
+              failureThreshold: 3
+            
+            # コマンド
+            command: ["python"]
+            args: ["main.py"]
+            
+            # 環境変数の個別設定
+            env:
+            - name: PYTHONPATH
+              value: "/app/src"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            
+          volumes:
+          - name: data-volume
+            persistentVolumeClaim:
+              claimName: stock-batch-data
+          - name: csv-data
+            configMap:
+              name: csv-data
+---

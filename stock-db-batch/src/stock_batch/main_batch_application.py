@@ -1,0 +1,520 @@
+"""メインバッチアプリケーション
+
+全サービスを統合したエンドツーエンドのバッチ処理アプリケーション
+Kubernetes対応、設定管理、ロギング、エラーハンドリング機能を提供
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import signal
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import psutil
+
+from stock_batch.database.connection import DatabaseConnection
+from stock_batch.services.csv_reader import CSVReader
+from stock_batch.services.database_service import DatabaseService
+from stock_batch.services.differential_processor import DifferentialProcessor
+from stock_batch.services.stock_fetcher import StockFetcher
+from stock_batch.services.translation import TranslationService
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class BatchConfig:
+    """バッチ設定
+
+    バッチ処理に必要な全ての設定を保持するデータクラス
+    """
+
+    database_path: str
+    csv_file_path: str
+    chunk_size: int = 1000
+    enable_parallel: bool = False
+    max_workers: int = 4
+    enable_stock_data_fetch: bool = True
+    enable_translation: bool = True
+    max_retries: int = 3
+    retry_delay: float = 1.0
+    dry_run: bool = False
+    continue_on_error: bool = True
+    log_level: str = "INFO"
+    enable_progress_reporting: bool = False
+    progress_report_interval: int = 100
+    enable_performance_monitoring: bool = False
+    enable_graceful_shutdown: bool = False
+
+    def __post_init__(self) -> None:
+        """設定の検証を行う"""
+        # データベースパスの検証
+        if self.database_path and not Path(self.database_path).parent.exists():
+            if self.database_path != "":  # 空文字列の場合は一時ファイルとして扱う
+                raise ValueError("データベースファイルが存在しません")
+
+        # CSVファイルパスの検証
+        if not Path(self.csv_file_path).parent.exists():
+            raise ValueError("CSVファイルのディレクトリが存在しません")
+
+    @classmethod
+    def from_environment(cls) -> BatchConfig:
+        """環境変数から設定を作成する
+
+        Kubernetes環境での設定読み込み用
+
+        Returns:
+            環境変数から作成されたBatchConfig
+
+        Example:
+            >>> config = BatchConfig.from_environment()
+        """
+        return cls(
+            database_path=os.getenv("BATCH_DATABASE_PATH", "/data/stocks.db"),
+            csv_file_path=os.getenv("BATCH_CSV_PATH", "/data/stocks.csv"),
+            chunk_size=int(os.getenv("BATCH_CHUNK_SIZE", "1000")),
+            enable_parallel=os.getenv("BATCH_ENABLE_PARALLEL", "false").lower()
+            == "true",
+            max_workers=int(os.getenv("BATCH_MAX_WORKERS", "4")),
+            enable_stock_data_fetch=os.getenv(
+                "BATCH_ENABLE_STOCK_FETCH", "true"
+            ).lower()
+            == "true",
+            enable_translation=os.getenv("BATCH_ENABLE_TRANSLATION", "true").lower()
+            == "true",
+            max_retries=int(os.getenv("BATCH_MAX_RETRIES", "3")),
+            dry_run=os.getenv("BATCH_DRY_RUN", "false").lower() == "true",
+            continue_on_error=os.getenv("BATCH_CONTINUE_ON_ERROR", "true").lower()
+            == "true",
+            log_level=os.getenv("BATCH_LOG_LEVEL", "INFO"),
+            enable_progress_reporting=os.getenv(
+                "BATCH_ENABLE_PROGRESS", "false"
+            ).lower()
+            == "true",
+            enable_performance_monitoring=os.getenv(
+                "BATCH_ENABLE_MONITORING", "false"
+            ).lower()
+            == "true",
+            enable_graceful_shutdown=os.getenv(
+                "BATCH_ENABLE_GRACEFUL_SHUTDOWN", "true"
+            ).lower()
+            == "true",
+        )
+
+
+@dataclass
+class BatchResult:
+    """バッチ処理結果
+
+    バッチ処理の結果と統計情報を保持するデータクラス
+    """
+
+    success: bool
+    total_processed: int
+    companies_inserted: int
+    companies_updated: int
+    processing_time: float
+    memory_usage_mb: float
+    records_per_second: float
+    database_operations_count: int
+    parallel_processing_used: bool
+    environment: str
+    error_details: list[str]
+    progress_reports: list[dict[str, Any]]
+
+
+class MainBatchApplication:
+    """メインバッチアプリケーションクラス
+
+    全サービスを統合してエンドツーエンドのバッチ処理を実行する。
+    Kubernetes環境での実行、Graceful Shutdown、パフォーマンス監視をサポートする。
+
+    Attributes:
+        config: バッチ設定
+        shutdown_requested: シャットダウン要求フラグ
+
+    Example:
+        >>> config = BatchConfig(
+        ...     database_path="/data/stocks.db",
+        ...     csv_file_path="/data/stocks.csv",
+        ...     enable_parallel=True
+        ... )
+        >>> app = MainBatchApplication(config)
+        >>> result = app.run_batch()
+        >>> print(f"処理完了: {result.total_processed}件")
+    """
+
+    def __init__(self, config: BatchConfig) -> None:
+        """MainBatchApplication を初期化する
+
+        Args:
+            config: バッチ設定
+
+        Example:
+            >>> config = BatchConfig.from_environment()
+            >>> app = MainBatchApplication(config)
+        """
+        self.config = config
+        self.shutdown_requested = False
+
+        # ログ設定
+        self._setup_logging()
+
+        # Graceful Shutdown設定
+        if config.enable_graceful_shutdown:
+            self._setup_signal_handlers()
+
+        # 統計情報
+        self._application_stats = {
+            "total_runs": 0,
+            "total_records_processed": 0,
+            "total_processing_time": 0.0,
+            "last_run_result": None,
+        }
+
+        logger.info("MainBatchApplication初期化完了")
+
+    def run_batch(self) -> BatchResult:
+        """バッチ処理を実行する
+
+        全てのサービスを統合してエンドツーエンドの処理を実行する。
+        設定に応じて並列処理、株価取得、翻訳などを行う。
+
+        Returns:
+            バッチ処理結果
+
+        Example:
+            >>> result = app.run_batch()
+            >>> if result.success:
+            ...     print(f"成功: {result.companies_inserted}件挿入")
+        """
+        start_time = time.time()
+        start_memory = self._get_memory_usage()
+
+        logger.info("バッチ処理開始: %s", self.config.csv_file_path)
+
+        # 結果初期化
+        result = BatchResult(
+            success=False,
+            total_processed=0,
+            companies_inserted=0,
+            companies_updated=0,
+            processing_time=0.0,
+            memory_usage_mb=0.0,
+            records_per_second=0.0,
+            database_operations_count=0,
+            parallel_processing_used=self.config.enable_parallel,
+            environment=self._detect_environment(),
+            error_details=[],
+            progress_reports=[],
+        )
+
+        try:
+            # 1. CSV読み取り
+            csv_companies = self._read_csv_data()
+            if not csv_companies:
+                raise Exception("CSVデータが読み取れませんでした")
+
+            result.total_processed = len(csv_companies)
+            logger.info("CSV読み取り完了: %d件", len(csv_companies))
+
+            # 2. 株価データ取得（オプション）
+            if self.config.enable_stock_data_fetch:
+                csv_companies = self._enrich_with_stock_data(csv_companies, result)
+
+            # 3. 翻訳処理（オプション）
+            if self.config.enable_translation:
+                csv_companies = self._translate_business_summaries(
+                    csv_companies, result
+                )
+
+            # 4. データベース処理
+            if not self.config.dry_run:
+                self._process_database_operations(csv_companies, result)
+
+            # 5. 処理完了
+            processing_time = time.time() - start_time
+            end_memory = self._get_memory_usage()
+
+            result.processing_time = processing_time
+            result.memory_usage_mb = max(0, end_memory - start_memory)
+            result.records_per_second = (
+                result.total_processed / processing_time if processing_time > 0 else 0
+            )
+            result.success = True
+
+            logger.info(
+                "バッチ処理完了: 成功 - 処理件数 %d件, 挿入 %d件, 更新 %d件 (%.2f秒)",
+                result.total_processed,
+                result.companies_inserted,
+                result.companies_updated,
+                result.processing_time,
+            )
+
+        except Exception as e:
+            processing_time = time.time() - start_time
+            result.processing_time = processing_time
+            result.error_details.append(str(e))
+            result.success = False
+
+            logger.error("バッチ処理失敗: %s", e)
+
+        # 統計情報更新
+        self._update_application_stats(result)
+
+        return result
+
+    def _read_csv_data(self) -> list:
+        """CSVデータを読み取る
+
+        Returns:
+            読み取った企業データのリスト
+        """
+        csv_reader = CSVReader(self.config.csv_file_path)
+        return csv_reader.read_and_convert()
+
+    def _enrich_with_stock_data(self, companies: list, result: BatchResult) -> list:
+        """株価データで企業情報を拡充する
+
+        Args:
+            companies: 企業データリスト
+            result: バッチ結果（統計更新用）
+
+        Returns:
+            株価データで拡充された企業データリスト
+        """
+        stock_fetcher = StockFetcher(
+            max_retries=self.config.max_retries, retry_delay=self.config.retry_delay
+        )
+
+        enriched_companies = []
+        for i, company in enumerate(companies):
+            if self.shutdown_requested:
+                logger.warning("シャットダウン要求により株価取得を中断")
+                break
+
+            try:
+                stock_data = stock_fetcher.fetch_stock_data(company.symbol)
+                if stock_data:
+                    # 株価データで企業情報を更新
+                    company.price = stock_data.current_price or company.price
+                    company.business_summary = (
+                        stock_data.business_summary or company.business_summary
+                    )
+
+                enriched_companies.append(company)
+
+                # 進捗報告
+                if (
+                    self.config.enable_progress_reporting
+                    and (i + 1) % self.config.progress_report_interval == 0
+                ):
+                    progress = {
+                        "stage": "stock_fetch",
+                        "processed": i + 1,
+                        "total": len(companies),
+                        "percentage": ((i + 1) / len(companies)) * 100,
+                    }
+                    result.progress_reports.append(progress)
+                    logger.info(
+                        "株価取得進捗: %d/%d (%.1f%%)",
+                        i + 1,
+                        len(companies),
+                        progress["percentage"],
+                    )
+
+            except Exception as e:
+                if not self.config.continue_on_error:
+                    raise
+                result.error_details.append(f"株価取得エラー {company.symbol}: {e}")
+                enriched_companies.append(company)
+
+        logger.info("株価データ取得完了: %d件処理", len(enriched_companies))
+        return enriched_companies
+
+    def _translate_business_summaries(
+        self, companies: list, result: BatchResult
+    ) -> list:
+        """ビジネス要約を翻訳する
+
+        Args:
+            companies: 企業データリスト
+            result: バッチ結果（統計更新用）
+
+        Returns:
+            翻訳済みの企業データリスト
+        """
+        translation_service = TranslationService(
+            max_retries=self.config.max_retries, retry_delay=self.config.retry_delay
+        )
+
+        for i, company in enumerate(companies):
+            if self.shutdown_requested:
+                logger.warning("シャットダウン要求により翻訳を中断")
+                break
+
+            try:
+                if company.business_summary:
+                    translated_summary = translation_service.translate_to_japanese(
+                        company.business_summary
+                    )
+                    company.business_summary = translated_summary
+
+                # 進捗報告
+                if (
+                    self.config.enable_progress_reporting
+                    and (i + 1) % self.config.progress_report_interval == 0
+                ):
+                    progress = {
+                        "stage": "translation",
+                        "processed": i + 1,
+                        "total": len(companies),
+                        "percentage": ((i + 1) / len(companies)) * 100,
+                    }
+                    result.progress_reports.append(progress)
+                    logger.info(
+                        "翻訳進捗: %d/%d (%.1f%%)",
+                        i + 1,
+                        len(companies),
+                        progress["percentage"],
+                    )
+
+            except Exception as e:
+                if not self.config.continue_on_error:
+                    raise
+                result.error_details.append(f"翻訳エラー {company.symbol}: {e}")
+
+        logger.info("翻訳処理完了: %d件処理", len(companies))
+        return companies
+
+    def _process_database_operations(
+        self, companies: list, result: BatchResult
+    ) -> None:
+        """データベース操作を処理する
+
+        Args:
+            companies: 企業データリスト
+            result: バッチ結果（統計更新用）
+        """
+        # データベース接続
+        db_connection = DatabaseConnection(self.config.database_path)
+        db_service = DatabaseService(db_connection)
+
+        with db_connection:
+            # データベース初期化
+            db_service.setup_database()
+
+            # 差分処理
+            processor = DifferentialProcessor(
+                db_service,
+                chunk_size=self.config.chunk_size,
+                enable_parallel=self.config.enable_parallel,
+                max_workers=self.config.max_workers,
+                enable_performance_metrics=self.config.enable_performance_monitoring,
+            )
+
+            diff_result = processor.process_diff(companies)
+
+            # データベース更新
+            insert_result = db_service.batch_insert_companies(diff_result.to_insert)
+            update_result = db_service.batch_update_companies(diff_result.to_update)
+
+            result.companies_inserted = insert_result["successful"]
+            result.companies_updated = update_result["successful"]
+            result.database_operations_count = (
+                diff_result.summary.database_queries_count
+            )
+
+            logger.info(
+                "データベース処理完了: 挿入 %d件, 更新 %d件",
+                result.companies_inserted,
+                result.companies_updated,
+            )
+
+    def _setup_logging(self) -> None:
+        """ログ設定を行う"""
+        log_level = getattr(logging, self.config.log_level.upper(), logging.INFO)
+
+        # ルートロガー設定
+        logging.basicConfig(
+            level=log_level,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+        # 特定のロガー設定
+        stock_batch_logger = logging.getLogger("stock_batch")
+        stock_batch_logger.setLevel(log_level)
+
+    def _setup_signal_handlers(self) -> None:
+        """シグナルハンドラーを設定する"""
+
+        def signal_handler(signum: int, frame) -> None:
+            logger.warning("シャットダウンシグナル受信: %s", signum)
+            self.shutdown_requested = True
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+    def _detect_environment(self) -> str:
+        """実行環境を検出する
+
+        Returns:
+            環境名（kubernetes, docker, local）
+        """
+        if os.getenv("KUBERNETES_SERVICE_HOST"):
+            return "kubernetes"
+        elif os.getenv("DOCKER_CONTAINER"):
+            return "docker"
+        else:
+            return "local"
+
+    def _get_memory_usage(self) -> float:
+        """現在のメモリ使用量をMB単位で取得する
+
+        Returns:
+            メモリ使用量（MB）
+        """
+        try:
+            process = psutil.Process()
+            return process.memory_info().rss / 1024 / 1024
+        except Exception:
+            return 0.0
+
+    def _update_application_stats(self, result: BatchResult) -> None:
+        """アプリケーション統計情報を更新する
+
+        Args:
+            result: バッチ処理結果
+        """
+        self._application_stats["total_runs"] += 1
+        self._application_stats["total_records_processed"] += result.total_processed
+        self._application_stats["total_processing_time"] += result.processing_time
+        self._application_stats["last_run_result"] = result
+
+    def get_application_stats(self) -> dict[str, Any]:
+        """アプリケーション統計情報を取得する
+
+        Returns:
+            統計情報の辞書
+
+        Example:
+            >>> stats = app.get_application_stats()
+            >>> print(f"平均処理時間: {stats['average_processing_time']:.2f}秒")
+        """
+        total_runs = self._application_stats["total_runs"]
+        total_time = self._application_stats["total_processing_time"]
+
+        return {
+            "total_runs": total_runs,
+            "total_records_processed": self._application_stats[
+                "total_records_processed"
+            ],
+            "total_processing_time": total_time,
+            "average_processing_time": total_time / total_runs if total_runs > 0 else 0,
+            "last_run_result": self._application_stats["last_run_result"],
+        }
