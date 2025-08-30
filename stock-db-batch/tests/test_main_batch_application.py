@@ -4,6 +4,7 @@
 設定管理、ロギング、エラーハンドリング、Kubernetes対応をテストします。
 """
 
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -402,6 +403,15 @@ class TestMainBatchApplication:
             assert result.total_processed == 10
             assert len(result.progress_reports) >= 0  # 進捗報告は条件次第
 
+            # 進捗報告にリソース監視情報が含まれているかチェック
+            if result.progress_reports:
+                for report in result.progress_reports:
+                    assert "memory_usage_mb" in report
+                    assert "processing_time" in report
+                    assert "records_per_second" in report
+                    assert isinstance(report["memory_usage_mb"], float)
+                    assert report["memory_usage_mb"] >= 0.0
+
         finally:
             Path(db_path).unlink(missing_ok=True)
             Path(csv_path).unlink(missing_ok=True)
@@ -533,6 +543,112 @@ class TestMainBatchApplication:
             assert stats["total_records_processed"] >= 3
             assert stats["average_processing_time"] > 0
             assert "last_run_result" in stats
+
+        finally:
+            Path(db_path).unlink(missing_ok=True)
+            Path(csv_path).unlink(missing_ok=True)
+
+
+class TestMainBatchApplicationYfinanceCache:
+    """MainBatchApplication のyfinanceキャッシュ設定テスト"""
+
+    @patch("yfinance.set_tz_cache_location")
+    def test_yfinance_cache_setup_success(self, mock_set_cache: Mock) -> None:
+        """yfinanceキャッシュ設定成功のテスト"""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
+            db_path = tmp_db.name
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp_csv:
+            csv_path = tmp_csv.name
+            tmp_csv.write("コード,銘柄名\n1332,テスト\n".encode())
+
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                cache_dir = str(Path(temp_dir) / "yfinance_cache")
+
+                with patch.dict(os.environ, {"YFINANCE_CACHE_DIR": cache_dir}):
+                    config = BatchConfig(
+                        database_path=db_path,
+                        csv_file_path=csv_path,
+                        enable_stock_data_fetch=False,
+                        enable_translation=False,
+                    )
+
+                    # MainBatchApplication初期化時にキャッシュ設定が呼ばれることを確認
+                    MainBatchApplication(config)
+
+                    # yfinance.set_tz_cache_locationが正しいパスで呼ばれることを確認
+                    mock_set_cache.assert_called_once_with(cache_dir)
+
+                    # キャッシュディレクトリが作成されることを確認
+                    assert Path(cache_dir).exists()
+
+        finally:
+            Path(db_path).unlink(missing_ok=True)
+            Path(csv_path).unlink(missing_ok=True)
+
+    @patch("yfinance.set_tz_cache_location")
+    def test_yfinance_cache_setup_with_default_path(self, mock_set_cache: Mock) -> None:
+        """デフォルトパスでのyfinanceキャッシュ設定テスト"""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
+            db_path = tmp_db.name
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp_csv:
+            csv_path = tmp_csv.name
+            tmp_csv.write("コード,銘柄名\n1332,テスト\n".encode())
+
+        try:
+            # YFINANCE_CACHE_DIR環境変数が設定されていない場合のテスト
+            with patch.dict(os.environ, {}, clear=True):
+                config = BatchConfig(
+                    database_path=db_path,
+                    csv_file_path=csv_path,
+                    enable_stock_data_fetch=False,
+                    enable_translation=False,
+                )
+
+                # MainBatchApplication初期化
+                with patch("pathlib.Path.mkdir") as mock_mkdir:
+                    MainBatchApplication(config)
+
+                    # デフォルトパス("/tmp/app/yfinance_cache")で呼ばれることを確認
+                    mock_set_cache.assert_called_once_with("/tmp/app/yfinance_cache")
+                    # ディレクトリ作成が試行されることを確認
+                    mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+
+        finally:
+            Path(db_path).unlink(missing_ok=True)
+            Path(csv_path).unlink(missing_ok=True)
+
+    @patch("yfinance.set_tz_cache_location")
+    @patch("pathlib.Path.mkdir")
+    def test_yfinance_cache_setup_failure_handling(
+        self, mock_mkdir: Mock, mock_set_cache: Mock
+    ) -> None:
+        """yfinanceキャッシュ設定失敗時の処理テスト"""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
+            db_path = tmp_db.name
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp_csv:
+            csv_path = tmp_csv.name
+            tmp_csv.write("コード,銘柄名\n1332,テスト\n".encode())
+
+        try:
+            # ディレクトリ作成でエラーを発生させる
+            mock_mkdir.side_effect = PermissionError("Permission denied")
+
+            config = BatchConfig(
+                database_path=db_path,
+                csv_file_path=csv_path,
+                enable_stock_data_fetch=False,
+                enable_translation=False,
+            )
+
+            # エラーが発生してもMainBatchApplicationは正常に作成される
+            MainBatchApplication(config)
+
+            # ディレクトリ作成が試行されることを確認
+            mock_mkdir.assert_called_once()
+
+            # エラーのためyfinance設定は呼ばれない
+            mock_set_cache.assert_not_called()
 
         finally:
             Path(db_path).unlink(missing_ok=True)
