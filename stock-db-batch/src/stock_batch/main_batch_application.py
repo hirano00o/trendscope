@@ -493,6 +493,24 @@ class MainBatchApplication:
 
         # キャッシュディレクトリの作成
         try:
+            # 親ディレクトリの存在確認
+            parent_dir = Path(cache_dir).parent
+            if not parent_dir.exists():
+                logger.error("親ディレクトリが存在しません: %s", parent_dir)
+                return
+
+            # 書き込み権限テスト
+            test_file = parent_dir / ".write_test"
+            try:
+                test_file.write_text("test")
+                test_file.unlink()
+                logger.debug("書き込み権限確認完了: %s", parent_dir)
+            except OSError as perm_error:
+                logger.error(
+                    "書き込み権限がありません: %s, エラー: %s", parent_dir, perm_error
+                )
+                return
+
             Path(cache_dir).mkdir(parents=True, exist_ok=True)
 
             # yfinanceキャッシュ設定

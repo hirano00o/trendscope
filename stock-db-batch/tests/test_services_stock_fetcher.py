@@ -214,7 +214,7 @@ class TestStockFetcher:
         assert fetcher.is_valid_symbol("1332.T") is True
         assert fetcher.is_valid_symbol("130A.T") is True
         assert fetcher.is_valid_symbol("9999.T") is True
-        
+
         # 有効な日本株シンボル（その他の取引所）
         assert fetcher.is_valid_symbol("3698.S") is True  # 札幌証券取引所
         assert fetcher.is_valid_symbol("2200.N") is True  # 名古屋証券取引所
