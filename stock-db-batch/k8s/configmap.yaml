@@ -10,7 +10,7 @@ data:
   BATCH_DATABASE_PATH: "/data/stocks.db"
   
   # CSV設定
-  BATCH_CSV_PATH: "/data/stocks.csv"
+  BATCH_CSV_PATH: "/csv-data/stocks.csv"
   
   # 処理設定
   BATCH_CHUNK_SIZE: "1000"

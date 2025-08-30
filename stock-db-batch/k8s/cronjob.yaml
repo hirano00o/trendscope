@@ -66,8 +66,7 @@ spec:
             - name: data-volume
               mountPath: /data
             - name: csv-data
-              mountPath: /data/stocks.csv
-              subPath: stocks.csv
+              mountPath: /csv-data
             
             # ヘルスチェック
             livenessProbe:

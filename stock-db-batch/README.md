@@ -132,7 +132,7 @@ kubectl apply -f k8s/rbac.yaml
 
 # CSVデータ用ConfigMap作成
 kubectl create configmap csv-data \
-  --from-file=stocks.csv=k8s/sample-stocks.csv \
+  --from-file=stocks.csv=/path/to/your/stocks.csv \
   -n trendscope-stock-batch
 
 # CronJob作成
