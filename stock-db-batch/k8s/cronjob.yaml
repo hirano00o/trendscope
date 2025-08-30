@@ -70,17 +70,17 @@ spec:
             - name: tmp-cache
               mountPath: /tmp/app
             
-            # ヘルスチェック
+            # ヘルスチェック（バッチ処理用に調整）
             livenessProbe:
               exec:
                 command:
                 - /bin/sh
                 - -c
-                - "ps aux | grep -v grep | grep python"
-              initialDelaySeconds: 30
-              periodSeconds: 60
-              timeoutSeconds: 10
-              failureThreshold: 3
+                - "pgrep python || test -f /tmp/app/.batch_running"
+              initialDelaySeconds: 60
+              periodSeconds: 120
+              timeoutSeconds: 30
+              failureThreshold: 5
             
             # コマンド
             command: ["python"]

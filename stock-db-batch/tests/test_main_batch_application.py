@@ -548,6 +548,82 @@ class TestMainBatchApplication:
             Path(db_path).unlink(missing_ok=True)
             Path(csv_path).unlink(missing_ok=True)
 
+    def test_liveness_marker_management(self) -> None:
+        """Liveness Probe状態マーカー管理のテスト"""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
+            db_path = tmp_db.name
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp_csv:
+            csv_path = tmp_csv.name
+            tmp_csv.write(
+                "コード,銘柄名,市場,現在値,前日比(%)\n1332,テスト株式会社,東1,1000,+1.0%\n".encode()
+            )
+
+        try:
+            config = BatchConfig(
+                database_path=db_path,
+                csv_file_path=csv_path,
+                enable_stock_data_fetch=False,
+                enable_translation=False,
+            )
+
+            app = MainBatchApplication(config)
+            marker_file = Path("/tmp/app/.batch_running")
+
+            # 初期状態：マーカーファイルは存在しない
+            assert not marker_file.exists()
+
+            # マーカー作成テスト
+            app._create_liveness_marker()
+            assert marker_file.exists()
+
+            # マーカー削除テスト
+            app._remove_liveness_marker()
+            assert not marker_file.exists()
+
+        finally:
+            # クリーンアップ
+            marker_file = Path("/tmp/app/.batch_running")
+            marker_file.unlink(missing_ok=True)
+            Path(db_path).unlink(missing_ok=True)
+            Path(csv_path).unlink(missing_ok=True)
+
+    def test_liveness_marker_during_batch_processing(self) -> None:
+        """バッチ処理中のLiveness Probe状態マーカーのテスト"""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
+            db_path = tmp_db.name
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp_csv:
+            csv_path = tmp_csv.name
+            tmp_csv.write(
+                "コード,銘柄名,市場,現在値,前日比(%)\n1332,テスト株式会社,東1,1000,+1.0%\n".encode()
+            )
+
+        try:
+            config = BatchConfig(
+                database_path=db_path,
+                csv_file_path=csv_path,
+                enable_stock_data_fetch=False,
+                enable_translation=False,
+            )
+
+            app = MainBatchApplication(config)
+            marker_file = Path("/tmp/app/.batch_running")
+
+            # バッチ処理実行
+            result = app.run_batch()
+
+            # バッチ処理成功確認
+            assert result.success is True
+
+            # 処理終了後：マーカーファイルは削除されている
+            assert not marker_file.exists()
+
+        finally:
+            # クリーンアップ
+            marker_file = Path("/tmp/app/.batch_running")
+            marker_file.unlink(missing_ok=True)
+            Path(db_path).unlink(missing_ok=True)
+            Path(csv_path).unlink(missing_ok=True)
+
 
 class TestMainBatchApplicationYfinanceCache:
     """MainBatchApplication のyfinanceキャッシュ設定テスト"""

@@ -182,6 +182,24 @@ class MainBatchApplication:
 
         logger.info("MainBatchApplication初期化完了")
 
+    def _create_liveness_marker(self) -> None:
+        """Liveness Probe用の状態マーカーファイルを作成する"""
+        try:
+            marker_file = Path("/tmp/app/.batch_running")
+            marker_file.touch()
+            logger.debug("Liveness Probe状態マーカー作成: %s", marker_file)
+        except Exception as e:
+            logger.warning("Liveness Probe状態マーカー作成失敗: %s", e)
+
+    def _remove_liveness_marker(self) -> None:
+        """Liveness Probe用の状態マーカーファイルを削除する"""
+        try:
+            marker_file = Path("/tmp/app/.batch_running")
+            marker_file.unlink(missing_ok=True)
+            logger.debug("Liveness Probe状態マーカー削除: %s", marker_file)
+        except Exception as e:
+            logger.warning("Liveness Probe状態マーカー削除失敗: %s", e)
+
     def run_batch(self) -> BatchResult:
         """バッチ処理を実行する
 
@@ -198,6 +216,9 @@ class MainBatchApplication:
         """
         start_time = time.time()
         start_memory = self._get_memory_usage()
+
+        # Liveness Probe用状態マーカー作成
+        self._create_liveness_marker()
 
         logger.info("バッチ処理開始: %s", self.config.csv_file_path)
 
@@ -269,6 +290,9 @@ class MainBatchApplication:
 
         # 統計情報更新
         self._update_application_stats(result)
+
+        # Liveness Probe用状態マーカー削除
+        self._remove_liveness_marker()
 
         return result
 
