@@ -200,7 +200,7 @@ class MainBatchApplication:
         except Exception as e:
             logger.warning("Liveness Probe状態マーカー削除失敗: %s", e)
 
-    def run_batch(self) -> BatchResult:
+    async def run_batch(self) -> BatchResult:
         """バッチ処理を実行する
 
         全てのサービスを統合してエンドツーエンドの処理を実行する。
@@ -253,7 +253,7 @@ class MainBatchApplication:
 
             # 3. 翻訳処理（オプション）
             if self.config.enable_translation:
-                csv_companies = self._translate_business_summaries(
+                csv_companies = await self._translate_business_summaries(
                     csv_companies, result
                 )
 
@@ -378,7 +378,7 @@ class MainBatchApplication:
         logger.info("株価データ取得完了: %d件処理", len(enriched_companies))
         return enriched_companies
 
-    def _translate_business_summaries(
+    async def _translate_business_summaries(
         self, companies: list, result: BatchResult
     ) -> list:
         """ビジネス要約を翻訳する
@@ -403,8 +403,10 @@ class MainBatchApplication:
 
             try:
                 if company.business_summary:
-                    translated_summary = translation_service.translate_to_japanese(
-                        company.business_summary
+                    translated_summary = (
+                        await translation_service.translate_to_japanese(
+                            company.business_summary
+                        )
                     )
                     company.business_summary = translated_summary
 

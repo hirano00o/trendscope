@@ -5,11 +5,12 @@ googletransライブラリを使用した英語から日本語への翻訳機能
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import Any
 
-import googletrans
+from googletrans import Translator
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class TranslationService:
             "total_response_time": 0.0,
         }
 
-    def translate_to_japanese(self, text: str | None) -> str:
+    async def translate_to_japanese(self, text: str | None) -> str:
         """英語テキストを日本語に翻訳する
 
         googletrans を使用してテキストを英語から日本語に翻訳する。
@@ -99,8 +100,8 @@ class TranslationService:
                 )
 
                 # Google翻訳API呼び出し
-                translator = googletrans.Translator()
-                result = translator.translate(text, dest="ja", src="en")
+                async with Translator() as translator:
+                    result = await translator.translate(text, dest="ja", src="en")
 
                 # 翻訳結果取得
                 translated_text = result.text or text
@@ -143,7 +144,7 @@ class TranslationService:
         self._record_failure()
         return text
 
-    def translate_multiple_texts(self, texts: list[str]) -> list[str]:
+    async def translate_multiple_texts(self, texts: list[str]) -> list[str]:
         """複数のテキストを日本語に翻訳する
 
         並列処理は行わず、順次翻訳してレート制限を回避する。
@@ -173,7 +174,7 @@ class TranslationService:
         for i, text in enumerate(texts, 1):
             logger.debug("進捗: %d/%d", i, len(texts))
 
-            translated_text = self.translate_to_japanese(text)
+            translated_text = await self.translate_to_japanese(text)
             translated_texts.append(translated_text)
 
             # 翻訳に成功した場合（元のテキストと異なる場合）
@@ -182,7 +183,7 @@ class TranslationService:
 
             # レート制限対策：短時間の待機
             if i < len(texts):  # 最後以外
-                time.sleep(0.1)  # 100ms 待機
+                await asyncio.sleep(0.1)  # 100ms 待機
 
         elapsed_time = time.time() - start_time
         logger.info(

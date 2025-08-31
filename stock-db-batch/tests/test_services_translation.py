@@ -3,7 +3,9 @@
 googletransライブラリを使用した英語から日本語への翻訳機能をテストします。
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from stock_batch.services.translation import TranslationService
 
@@ -16,12 +18,16 @@ class TestTranslationService:
         service = TranslationService()
         assert service is not None
 
+    @pytest.mark.asyncio
     @patch("googletrans.Translator")
-    def test_translate_text_success(self, mock_translator_class: Mock) -> None:
+    async def test_translate_text_success(self, mock_translator_class: Mock) -> None:
         """英日翻訳成功のテスト"""
-        # モックの設定
-        mock_translator = Mock()
-        mock_translator_class.return_value = mock_translator
+        # モックの設定 - 非同期コンテキストマネージャーとして使用
+        mock_translator = AsyncMock()
+        mock_translator_class.return_value.__aenter__ = AsyncMock(
+            return_value=mock_translator
+        )
+        mock_translator_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
         # 翻訳結果のモック
         mock_result = Mock()
@@ -30,7 +36,7 @@ class TestTranslationService:
 
         service = TranslationService()
         english_text = "Nissui Corporation is a Japanese fishery company."
-        japanese_text = service.translate_to_japanese(english_text)
+        japanese_text = await service.translate_to_japanese(english_text)
 
         assert japanese_text is not None
         assert japanese_text == "日水株式会社は日本の水産会社です。"
@@ -38,48 +44,62 @@ class TestTranslationService:
             english_text, dest="ja", src="en"
         )
 
+    @pytest.mark.asyncio
     @patch("googletrans.Translator")
-    def test_translate_text_empty_input(self, mock_translator_class: Mock) -> None:
+    async def test_translate_text_empty_input(
+        self, mock_translator_class: Mock
+    ) -> None:
         """空文字列の翻訳テスト"""
         service = TranslationService()
-        result = service.translate_to_japanese("")
+        result = await service.translate_to_japanese("")
 
         assert result == ""
         # 空文字列の場合は翻訳APIを呼び出さない
         mock_translator_class.assert_not_called()
 
+    @pytest.mark.asyncio
     @patch("googletrans.Translator")
-    def test_translate_text_none_input(self, mock_translator_class: Mock) -> None:
+    async def test_translate_text_none_input(self, mock_translator_class: Mock) -> None:
         """None入力の翻訳テスト"""
         service = TranslationService()
-        result = service.translate_to_japanese(None)
+        result = await service.translate_to_japanese(None)
 
         assert result == ""
         # None入力の場合は翻訳APIを呼び出さない
         mock_translator_class.assert_not_called()
 
+    @pytest.mark.asyncio
     @patch("googletrans.Translator")
-    def test_translate_text_network_error(self, mock_translator_class: Mock) -> None:
+    async def test_translate_text_network_error(
+        self, mock_translator_class: Mock
+    ) -> None:
         """ネットワークエラーのテスト"""
         # モックでネットワークエラーを発生させる
-        mock_translator = Mock()
-        mock_translator_class.return_value = mock_translator
+        mock_translator = AsyncMock()
+        mock_translator_class.return_value.__aenter__ = AsyncMock(
+            return_value=mock_translator
+        )
+        mock_translator_class.return_value.__aexit__ = AsyncMock(return_value=None)
         mock_translator.translate.side_effect = Exception("Network error")
 
         service = TranslationService()
-        result = service.translate_to_japanese("Test text")
+        result = await service.translate_to_japanese("Test text")
 
         # エラーの場合は元の英語テキストを返す
         assert result == "Test text"
 
+    @pytest.mark.asyncio
     @patch("googletrans.Translator")
-    def test_translate_multiple_texts_success(
+    async def test_translate_multiple_texts_success(
         self, mock_translator_class: Mock
     ) -> None:
         """複数テキストの翻訳テスト"""
-        # モックの設定
-        mock_translator = Mock()
-        mock_translator_class.return_value = mock_translator
+        # モックの設定 - 非同期コンテキストマネージャーとして使用
+        mock_translator = AsyncMock()
+        mock_translator_class.return_value.__aenter__ = AsyncMock(
+            return_value=mock_translator
+        )
+        mock_translator_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
         # 翻訳結果のモック
         def translate_side_effect(text, dest="ja", src="en"):
@@ -99,16 +119,17 @@ class TestTranslationService:
             "Nissui Corporation is a Japanese fishery company.",
             "Sony Corporation is a Japanese electronics company.",
         ]
-        japanese_texts = service.translate_multiple_texts(english_texts)
+        japanese_texts = await service.translate_multiple_texts(english_texts)
 
         assert len(japanese_texts) == 2
         assert japanese_texts[0] == "日水株式会社は日本の水産会社です。"
         assert japanese_texts[1] == "ソニー株式会社は日本の電子機器会社です。"
 
-    def test_translate_multiple_texts_empty_list(self) -> None:
+    @pytest.mark.asyncio
+    async def test_translate_multiple_texts_empty_list(self) -> None:
         """空リストの複数翻訳テスト"""
         service = TranslationService()
-        result = service.translate_multiple_texts([])
+        result = await service.translate_multiple_texts([])
 
         assert result == []
 
@@ -136,7 +157,7 @@ class TestTranslationService:
             "Error text",  # エラーが発生
             "Valid text 2",
         ]
-        japanese_texts = service.translate_multiple_texts(english_texts)
+        japanese_texts = await service.translate_multiple_texts(english_texts)
 
         assert len(japanese_texts) == 3
         assert japanese_texts[0] == "翻訳結果: Valid text 1"
