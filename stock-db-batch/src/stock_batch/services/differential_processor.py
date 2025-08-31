@@ -16,7 +16,7 @@ from typing import Any
 import psutil
 
 from stock_batch.models.company import Company
-from stock_batch.services.database_service import DatabaseService
+from stock_batch.services.thread_safe_database_service import ThreadSafeDatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class DifferentialProcessor:
     メモリ最適化、並列処理、カスタム比較戦略をサポートする。
 
     Attributes:
-        db_service: データベースサービス
+        db_service: スレッドセーフデータベースサービス
         chunk_size: チャンク処理サイズ
         enable_parallel: 並列処理有効フラグ
         max_workers: 最大ワーカー数
@@ -69,7 +69,7 @@ class DifferentialProcessor:
         custom_comparison_func: カスタム比較関数
 
     Example:
-        >>> db_service = DatabaseService(conn)
+        >>> db_service = ThreadSafeDatabaseService(thread_safe_conn)
         >>> processor = DifferentialProcessor(
         ...     db_service, chunk_size=1000, enable_parallel=True
         ... )
@@ -79,7 +79,7 @@ class DifferentialProcessor:
 
     def __init__(
         self,
-        db_service: DatabaseService,
+        db_service: ThreadSafeDatabaseService,
         chunk_size: int = 1000,
         enable_parallel: bool = False,
         max_workers: int = 4,
@@ -91,7 +91,7 @@ class DifferentialProcessor:
         """DifferentialProcessor を初期化する
 
         Args:
-            db_service: データベースサービス
+            db_service: スレッドセーフデータベースサービス
             chunk_size: チャンク処理サイズ（デフォルト: 1000）
             enable_parallel: 並列処理有効（デフォルト: False）
             max_workers: 最大ワーカー数（デフォルト: 4）
