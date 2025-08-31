@@ -4,13 +4,14 @@ TrendScope 株式データバッチ処理アプリケーション
 エントリーポイント
 """
 
+import asyncio
 import logging
 import sys
 
 from stock_batch.main_batch_application import BatchConfig, MainBatchApplication
 
 
-def main() -> int:
+async def main() -> int:
     """メイン実行関数
 
     Returns:
@@ -22,7 +23,7 @@ def main() -> int:
 
         # アプリケーション実行
         app = MainBatchApplication(config)
-        result = app.run_batch()
+        result = await app.run_batch()
 
         if result.success:
             print(f"バッチ処理成功: {result.total_processed}件処理")
@@ -37,4 +38,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(asyncio.run(main()))
