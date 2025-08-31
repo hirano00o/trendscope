@@ -75,18 +75,28 @@ class StockFetcher:
     # 対応取引所: .T(東京), .S(札幌), .F(福岡), .N(名古屋), .OS(大阪)
     JAPAN_SYMBOL_PATTERN = re.compile(r"^[A-Z0-9]{3,4}\.(T|S|F|N|OS)$")
 
-    def __init__(self, max_retries: int = 3, retry_delay: float = 1.0) -> None:
+    def __init__(
+        self,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
+        rate_limit_delay: float = 0.5,
+    ) -> None:
         """StockFetcher を初期化する
 
         Args:
             max_retries: 最大リトライ回数（デフォルト: 3）
             retry_delay: リトライ間隔秒数（デフォルト: 1.0）
+            rate_limit_delay: API呼び出し間の待機時間秒数（デフォルト: 0.5）
 
         Example:
-            >>> fetcher = StockFetcher(max_retries=5, retry_delay=2.0)
+            >>> fetcher = StockFetcher(
+            ...     max_retries=5, retry_delay=2.0, rate_limit_delay=1.0
+            ... )
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.rate_limit_delay = rate_limit_delay
+        self._last_request_time = 0.0
         self._stats = {
             "total_requests": 0,
             "successful_requests": 0,
@@ -116,6 +126,9 @@ class StockFetcher:
             logger.warning("無効な株式シンボル: %s", symbol)
             self._record_failure()
             return None
+
+        # レート制限対応
+        self._apply_rate_limit()
 
         start_time = time.time()
         self._stats["total_requests"] += 1
@@ -348,3 +361,24 @@ class StockFetcher:
         except (ValueError, TypeError):
             pass
         return None
+
+    def _apply_rate_limit(self) -> None:
+        """レート制限を適用する
+
+        前回のAPI呼び出しからの経過時間をチェックし、
+        必要に応じて待機してAPIレート制限を回避する
+        """
+        # 初回リクエストの場合はレート制限を適用しない
+        if self._last_request_time == 0.0:
+            self._last_request_time = time.time()
+            return
+
+        current_time = time.time()
+        elapsed_time = current_time - self._last_request_time
+
+        if elapsed_time < self.rate_limit_delay:
+            sleep_time = self.rate_limit_delay - elapsed_time
+            logger.debug("レート制限待機: %.2f秒", sleep_time)
+            time.sleep(sleep_time)
+
+        self._last_request_time = time.time()
