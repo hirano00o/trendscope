@@ -5,6 +5,7 @@ yfinanceライブラリを使用した株価・企業情報の取得機能を提
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -380,5 +381,197 @@ class StockFetcher:
             sleep_time = self.rate_limit_delay - elapsed_time
             logger.debug("レート制限待機: %.2f秒", sleep_time)
             time.sleep(sleep_time)
+
+        self._last_request_time = time.time()
+
+    async def fetch_stock_data_async(self, symbol: str) -> StockData | None:
+        """指定された株式シンボルの株価データを非同期で取得する
+
+        yfinanceを使用して最新の株価と企業情報を非同期で取得する。
+        ネットワークエラーやデータ不備の場合はリトライを実行。
+
+        Args:
+            symbol: 株式シンボル（例: 1332.T）
+
+        Returns:
+            StockDataオブジェクト、取得失敗時はNone
+
+        Example:
+            >>> fetcher = StockFetcher()
+            >>> data = await fetcher.fetch_stock_data_async("1332.T")
+            >>> if data:
+            ...     print(f"価格: ¥{data.current_price}")
+        """
+        if not self.is_valid_symbol(symbol):
+            logger.warning("無効な株式シンボル: %s", symbol)
+            self._record_failure()
+            return None
+
+        # レート制限対応（非同期版）
+        await self._apply_rate_limit_async()
+
+        start_time = time.time()
+        self._stats["total_requests"] += 1
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                logger.debug(
+                    "株価データ取得開始: %s (試行 %d/%d)",
+                    symbol,
+                    attempt,
+                    self.max_retries,
+                )
+
+                # yfinance処理を非同期で実行
+                def _sync_yfinance_call():
+                    ticker = yf.Ticker(symbol)
+                    hist = ticker.history(period="1d")
+                    info = ticker.info or {}
+                    return hist, info
+
+                # CPU集約的なyfinance処理をスレッドプールで実行
+                loop = asyncio.get_event_loop()
+                hist, info = await loop.run_in_executor(None, _sync_yfinance_call)
+
+                if hist.empty:
+                    logger.warning("株価データが見つかりません: %s", symbol)
+                    self._record_failure()
+                    return None
+
+                # 最新の価格データ取得
+                latest_data = hist.iloc[-1]
+                current_price = float(latest_data.get("Close", 0))
+
+                if current_price <= 0:
+                    logger.warning(
+                        "無効な株価データ: %s - 価格: %s", symbol, current_price
+                    )
+                    self._record_failure()
+                    return None
+
+                # StockData オブジェクト作成
+                stock_data = StockData(
+                    symbol=symbol,
+                    current_price=current_price,
+                    business_summary=info.get("longBusinessSummary", ""),
+                    volume=self._safe_int(latest_data.get("Volume")),
+                    day_high=self._safe_float(latest_data.get("High")),
+                    day_low=self._safe_float(latest_data.get("Low")),
+                    sector=info.get("sector"),
+                    industry=info.get("industry"),
+                )
+
+                # 統計情報更新
+                response_time = time.time() - start_time
+                self._record_success(response_time)
+
+                logger.debug(
+                    "株価データ取得成功: %s - 価格: ¥%.2f (%.2f秒)",
+                    symbol,
+                    current_price,
+                    response_time,
+                )
+                return stock_data
+
+            except Exception as e:
+                logger.warning(
+                    "株価データ取得エラー: %s (試行 %d/%d) - %s",
+                    symbol,
+                    attempt,
+                    self.max_retries,
+                    e,
+                )
+
+                if attempt < self.max_retries:
+                    logger.debug("リトライまで %s秒待機", self.retry_delay)
+                    await asyncio.sleep(self.retry_delay)
+                else:
+                    logger.error("株価データ取得失敗（リトライ上限到達）: %s", symbol)
+
+        self._record_failure()
+        return None
+
+    async def fetch_multiple_stocks_async(
+        self, symbols: list[str], max_concurrent: int = 5
+    ) -> list[StockData]:
+        """複数の株式データを非同期で取得する
+
+        並行処理でスループットを向上させながら、レート制限を遵守する。
+        取得結果は価格の降順でソートして返す。
+
+        Args:
+            symbols: 株式シンボルのリスト
+            max_concurrent: 最大並行実行数（デフォルト: 5）
+
+        Returns:
+            StockDataオブジェクトのリスト（取得成功分のみ）
+
+        Example:
+            >>> fetcher = StockFetcher()
+            >>> symbols = ["1332.T", "1418.T", "130A.T"]
+            >>> stock_data_list = await fetcher.fetch_multiple_stocks_async(symbols)
+            >>> for data in stock_data_list:
+            ...     print(f"{data.symbol}: ¥{data.current_price}")
+        """
+        if not symbols:
+            return []
+
+        logger.info("複数株価データ非同期取得開始: %d件", len(symbols))
+        start_time = time.time()
+
+        # セマフォで並行数を制御
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def fetch_with_semaphore(symbol: str) -> StockData | None:
+            """セマフォ制御付きの株価取得"""
+            async with semaphore:
+                return await self.fetch_stock_data_async(symbol)
+
+        # 全ての株価取得を並行実行
+        tasks = [fetch_with_semaphore(symbol) for symbol in symbols]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 結果をフィルタリング
+        stock_data_list = []
+        successful_count = 0
+
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error("株価取得で例外発生 %s: %s", symbols[i], result)
+            elif result is not None:
+                stock_data_list.append(result)
+                successful_count += 1
+
+        # 価格の降順でソート
+        stock_data_list.sort(key=lambda x: x.current_price, reverse=True)
+
+        elapsed_time = time.time() - start_time
+        logger.info(
+            "複数株価データ非同期取得完了: %d/%d件成功 (%.2f秒)",
+            successful_count,
+            len(symbols),
+            elapsed_time,
+        )
+
+        return stock_data_list
+
+    async def _apply_rate_limit_async(self) -> None:
+        """レート制限を非同期で適用する
+
+        前回のAPI呼び出しからの経過時間をチェックし、
+        必要に応じて非同期で待機してAPIレート制限を回避する
+        """
+        # 初回リクエストの場合はレート制限を適用しない
+        if self._last_request_time == 0.0:
+            self._last_request_time = time.time()
+            return
+
+        current_time = time.time()
+        elapsed_time = current_time - self._last_request_time
+
+        if elapsed_time < self.rate_limit_delay:
+            sleep_time = self.rate_limit_delay - elapsed_time
+            logger.debug("レート制限待機（非同期）: %.2f秒", sleep_time)
+            await asyncio.sleep(sleep_time)
 
         self._last_request_time = time.time()
