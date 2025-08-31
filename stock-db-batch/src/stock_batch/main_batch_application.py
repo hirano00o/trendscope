@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import psutil
+import yfinance
 
 from stock_batch.database.connection import DatabaseConnection
 from stock_batch.services.csv_reader import CSVReader
@@ -164,6 +165,9 @@ class MainBatchApplication:
         # ログ設定
         self._setup_logging()
 
+        # yfinanceキャッシュ設定
+        self._setup_yfinance_cache()
+
         # Graceful Shutdown設定
         if config.enable_graceful_shutdown:
             self._setup_signal_handlers()
@@ -177,6 +181,24 @@ class MainBatchApplication:
         }
 
         logger.info("MainBatchApplication初期化完了")
+
+    def _create_liveness_marker(self) -> None:
+        """Liveness Probe用の状態マーカーファイルを作成する"""
+        try:
+            marker_file = Path("/tmp/app/.batch_running")
+            marker_file.touch()
+            logger.debug("Liveness Probe状態マーカー作成: %s", marker_file)
+        except Exception as e:
+            logger.warning("Liveness Probe状態マーカー作成失敗: %s", e)
+
+    def _remove_liveness_marker(self) -> None:
+        """Liveness Probe用の状態マーカーファイルを削除する"""
+        try:
+            marker_file = Path("/tmp/app/.batch_running")
+            marker_file.unlink(missing_ok=True)
+            logger.debug("Liveness Probe状態マーカー削除: %s", marker_file)
+        except Exception as e:
+            logger.warning("Liveness Probe状態マーカー削除失敗: %s", e)
 
     def run_batch(self) -> BatchResult:
         """バッチ処理を実行する
@@ -194,6 +216,9 @@ class MainBatchApplication:
         """
         start_time = time.time()
         start_memory = self._get_memory_usage()
+
+        # Liveness Probe用状態マーカー作成
+        self._create_liveness_marker()
 
         logger.info("バッチ処理開始: %s", self.config.csv_file_path)
 
@@ -241,7 +266,7 @@ class MainBatchApplication:
             end_memory = self._get_memory_usage()
 
             result.processing_time = processing_time
-            result.memory_usage_mb = max(0, end_memory - start_memory)
+            result.memory_usage_mb = max(0.0, end_memory - start_memory)
             result.records_per_second = (
                 result.total_processed / processing_time if processing_time > 0 else 0
             )
@@ -266,6 +291,9 @@ class MainBatchApplication:
         # 統計情報更新
         self._update_application_stats(result)
 
+        # Liveness Probe用状態マーカー削除
+        self._remove_liveness_marker()
+
         return result
 
     def _read_csv_data(self) -> list:
@@ -288,10 +316,13 @@ class MainBatchApplication:
             株価データで拡充された企業データリスト
         """
         stock_fetcher = StockFetcher(
-            max_retries=self.config.max_retries, retry_delay=self.config.retry_delay
+            max_retries=self.config.max_retries,
+            retry_delay=self.config.retry_delay,
+            rate_limit_delay=1.0,  # API負荷軽減のため1秒間隔
         )
 
         enriched_companies = []
+        stock_start_time = time.time()
         for i, company in enumerate(companies):
             if self.shutdown_requested:
                 logger.warning("シャットダウン要求により株価取得を中断")
@@ -308,23 +339,34 @@ class MainBatchApplication:
 
                 enriched_companies.append(company)
 
-                # 進捗報告
+                # 進捗報告とリソース監視
                 if (
                     self.config.enable_progress_reporting
                     and (i + 1) % self.config.progress_report_interval == 0
                 ):
+                    current_memory = self._get_memory_usage()
+                    processing_time = time.time() - stock_start_time
+
                     progress = {
                         "stage": "stock_fetch",
                         "processed": i + 1,
                         "total": len(companies),
                         "percentage": ((i + 1) / len(companies)) * 100,
+                        "memory_usage_mb": current_memory,
+                        "processing_time": processing_time,
+                        "records_per_second": (i + 1) / processing_time
+                        if processing_time > 0
+                        else 0,
                     }
                     result.progress_reports.append(progress)
                     logger.info(
-                        "株価取得進捗: %d/%d (%.1f%%)",
+                        "株価取得進捗: %d/%d (%.1f%%) - "
+                        "メモリ: %.1fMB, 処理速度: %.1f件/秒",
                         i + 1,
                         len(companies),
                         progress["percentage"],
+                        current_memory,
+                        progress["records_per_second"],
                     )
 
             except Exception as e:
@@ -352,6 +394,8 @@ class MainBatchApplication:
             max_retries=self.config.max_retries, retry_delay=self.config.retry_delay
         )
 
+        translation_start_time = time.time()
+
         for i, company in enumerate(companies):
             if self.shutdown_requested:
                 logger.warning("シャットダウン要求により翻訳を中断")
@@ -364,23 +408,35 @@ class MainBatchApplication:
                     )
                     company.business_summary = translated_summary
 
-                # 進捗報告
+                # 進捗報告とリソース監視
                 if (
                     self.config.enable_progress_reporting
                     and (i + 1) % self.config.progress_report_interval == 0
                 ):
+                    current_memory = self._get_memory_usage()
+                    # 翻訳開始時点からの処理時間を計算
+                    processing_time = time.time() - translation_start_time
+
                     progress = {
                         "stage": "translation",
                         "processed": i + 1,
                         "total": len(companies),
                         "percentage": ((i + 1) / len(companies)) * 100,
+                        "memory_usage_mb": current_memory,
+                        "processing_time": processing_time,
+                        "records_per_second": (i + 1) / processing_time
+                        if processing_time > 0
+                        else 0,
                     }
                     result.progress_reports.append(progress)
                     logger.info(
-                        "翻訳進捗: %d/%d (%.1f%%)",
+                        "翻訳進捗: %d/%d (%.1f%%) - "
+                        "メモリ: %.1fMB, 処理速度: %.1f件/秒",
                         i + 1,
                         len(companies),
                         progress["percentage"],
+                        current_memory,
+                        progress["records_per_second"],
                     )
 
             except Exception as e:
@@ -449,6 +505,45 @@ class MainBatchApplication:
         # 特定のロガー設定
         stock_batch_logger = logging.getLogger("stock_batch")
         stock_batch_logger.setLevel(log_level)
+
+    def _setup_yfinance_cache(self) -> None:
+        """yfinanceキャッシュ設定を行う
+
+        読み取り専用ファイルシステム環境でもキャッシュが使用できるよう
+        書き込み可能なディレクトリにキャッシュ場所を設定する
+        """
+        # 書き込み可能なキャッシュディレクトリを設定
+        cache_dir = os.getenv("YFINANCE_CACHE_DIR", "/tmp/app/yfinance_cache")
+
+        # キャッシュディレクトリの作成
+        try:
+            # 親ディレクトリの存在確認
+            parent_dir = Path(cache_dir).parent
+            if not parent_dir.exists():
+                logger.error("親ディレクトリが存在しません: %s", parent_dir)
+                return
+
+            # 書き込み権限テスト
+            test_file = parent_dir / ".write_test"
+            try:
+                test_file.write_text("test")
+                test_file.unlink()
+                logger.debug("書き込み権限確認完了: %s", parent_dir)
+            except OSError as perm_error:
+                logger.error(
+                    "書き込み権限がありません: %s, エラー: %s", parent_dir, perm_error
+                )
+                return
+
+            Path(cache_dir).mkdir(parents=True, exist_ok=True)
+
+            # yfinanceキャッシュ設定
+            yfinance.set_tz_cache_location(cache_dir)
+
+            logger.info("yfinanceキャッシュ設定完了: %s", cache_dir)
+
+        except Exception as e:
+            logger.warning("yfinanceキャッシュ設定に失敗: %s - デフォルト設定を使用", e)
 
     def _setup_signal_handlers(self) -> None:
         """シグナルハンドラーを設定する"""

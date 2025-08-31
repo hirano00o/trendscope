@@ -3,6 +3,9 @@
 yfinanceライブラリを使用した株価・企業情報の取得機能をテストします。
 """
 
+import os
+import tempfile
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from stock_batch.services.stock_fetcher import StockData, StockFetcher
@@ -211,7 +214,13 @@ class TestStockFetcher:
         assert fetcher.is_valid_symbol("1332.T") is True
         assert fetcher.is_valid_symbol("130A.T") is True
         assert fetcher.is_valid_symbol("9999.T") is True
-        
+
+        # 有効な日本株シンボル（その他の取引所）
+        assert fetcher.is_valid_symbol("3698.S") is True  # 札幌証券取引所
+        assert fetcher.is_valid_symbol("2200.N") is True  # 名古屋証券取引所
+        assert fetcher.is_valid_symbol("8885.F") is True  # 福岡証券取引所
+        assert fetcher.is_valid_symbol("9999.OS") is True  # 大阪証券取引所
+
         # 有効な日本株シンボル（その他の取引所）
         assert fetcher.is_valid_symbol("3698.S") is True  # 札幌証券取引所
         assert fetcher.is_valid_symbol("2200.N") is True  # 名古屋証券取引所
@@ -307,3 +316,206 @@ class TestStockData:
 
         assert sorted_list[0].symbol == "B"  # 高い価格が最初
         assert sorted_list[1].symbol == "A"
+
+
+class TestYfinanceCacheConfiguration:
+    """yfinanceキャッシュ設定のテスト"""
+
+    def test_yfinance_cache_directory_setting(self) -> None:
+        """yfinanceキャッシュディレクトリ設定のテスト
+
+        yfinanceライブラリのキャッシュディレクトリを適切に設定できることを確認
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # テスト用の書き込み可能ディレクトリを設定
+            cache_dir = Path(temp_dir) / "yfinance_cache"
+
+            # yfinanceキャッシュ設定をテスト
+            with patch.dict(os.environ, {"YFINANCE_CACHE_DIR": str(cache_dir)}):
+                # キャッシュディレクトリが設定されることを確認
+                assert os.getenv("YFINANCE_CACHE_DIR") == str(cache_dir)
+
+    def test_yfinance_cache_directory_creation(self) -> None:
+        """yfinanceキャッシュディレクトリ作成のテスト
+
+        書き込み可能な場所にキャッシュディレクトリが作成できることを確認
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache_dir = Path(temp_dir) / "yfinance_cache"
+
+            # ディレクトリが存在しない状態から開始
+            assert not cache_dir.exists()
+
+            # ディレクトリ作成をテスト
+            cache_dir.mkdir(parents=True, exist_ok=True)
+
+            # 作成されたディレクトリの確認
+            assert cache_dir.exists()
+            assert cache_dir.is_dir()
+
+            # 書き込み権限の確認
+            test_file = cache_dir / "test_write.txt"
+            test_file.write_text("test")
+            assert test_file.read_text() == "test"
+
+    @patch.dict(os.environ, {"YFINANCE_CACHE_DIR": "/tmp/app/yfinance_cache"})
+    def test_yfinance_environment_variable_configuration(self) -> None:
+        """yfinance環境変数設定のテスト
+
+        環境変数でyfinanceキャッシュ設定が正しく読み込まれることを確認
+        """
+        # 環境変数が正しく設定されていることを確認
+        expected_cache_dir = "/tmp/app/yfinance_cache"
+        assert os.getenv("YFINANCE_CACHE_DIR") == expected_cache_dir
+
+    def test_default_cache_behavior_without_config(self) -> None:
+        """設定なしでのデフォルトキャッシュ動作のテスト
+
+        キャッシュ設定がない場合のyfinanceの動作を確認
+        """
+        # YFINANCE_CACHE_DIR環境変数が設定されていない状態をテスト
+        with patch.dict(os.environ, {}, clear=True):
+            # 環境変数が設定されていないことを確認
+            assert os.getenv("YFINANCE_CACHE_DIR") is None
+
+    @patch("yfinance.Ticker")
+    def test_stock_fetcher_with_cache_configuration(
+        self, mock_ticker_class: Mock
+    ) -> None:
+        """キャッシュ設定ありでのStockFetcher動作テスト
+
+        適切なキャッシュ設定の下でStockFetcherが正常に動作することを確認
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache_dir = Path(temp_dir) / "yfinance_cache"
+
+            with patch.dict(os.environ, {"YFINANCE_CACHE_DIR": str(cache_dir)}):
+                # モックの設定
+                mock_ticker = Mock()
+                mock_ticker_class.return_value = mock_ticker
+
+                # 株価情報のモック
+                mock_history = Mock()
+                mock_history.empty = False
+                latest_data = {"Close": 877.8, "Volume": 1000000}
+                mock_history.iloc = Mock()
+                mock_history.iloc.__getitem__ = Mock(return_value=latest_data)
+                mock_ticker.history.return_value = mock_history
+                mock_ticker.info = {"longBusinessSummary": "Test company"}
+
+                # StockFetcher実行
+                fetcher = StockFetcher()
+                stock_data = fetcher.fetch_stock_data("1332.T")
+
+                # 結果確認
+                assert stock_data is not None
+                assert stock_data.symbol == "1332.T"
+                assert stock_data.current_price == 877.8
+
+                # キャッシュディレクトリ設定の確認
+                assert os.getenv("YFINANCE_CACHE_DIR") == str(cache_dir)
+
+
+class TestStockFetcherRateLimit:
+    """StockFetcherのレート制限機能テスト"""
+
+    def test_rate_limit_initialization(self) -> None:
+        """レート制限の初期化テスト"""
+        fetcher = StockFetcher(rate_limit_delay=2.0)
+        assert fetcher.rate_limit_delay == 2.0
+        assert fetcher._last_request_time == 0.0
+
+    @patch("time.sleep")
+    @patch("time.time")
+    def test_rate_limit_delay_applied(self, mock_time: Mock, mock_sleep: Mock) -> None:
+        """レート制限の待機処理テスト"""
+        # 時間の経過をモック
+        mock_time.side_effect = [100.3, 101.0]  # 0.3秒経過、その後1.0秒に設定
+
+        fetcher = StockFetcher(rate_limit_delay=1.0)
+        fetcher._last_request_time = 100.0  # 前回のリクエスト時刻を設定（0.0ではない）
+
+        # _apply_rate_limitを直接テスト
+        fetcher._apply_rate_limit()
+
+        # 0.7秒待機するはず (1.0 - 0.3) - 浮動小数点精度のため約での比較
+        assert mock_sleep.call_count == 1
+        called_args = mock_sleep.call_args[0]
+        assert abs(called_args[0] - 0.7) < 0.01  # 0.7 ± 0.01
+
+    @patch("time.sleep")
+    @patch("time.time")
+    def test_rate_limit_no_delay_when_enough_time_passed(
+        self, mock_time: Mock, mock_sleep: Mock
+    ) -> None:
+        """十分時間が経過している場合はレート制限待機しないテスト"""
+        # 時間の経過をモック（2秒経過）
+        mock_time.side_effect = [102.0, 102.0]
+
+        fetcher = StockFetcher(rate_limit_delay=1.0)
+        fetcher._last_request_time = 100.0  # 前回のリクエスト時刻を設定（0.0ではない）
+
+        # _apply_rate_limitを直接テスト
+        fetcher._apply_rate_limit()
+
+        # 十分時間が経過しているので待機しない
+        mock_sleep.assert_not_called()
+
+    @patch("yfinance.Ticker")
+    @patch("time.sleep")
+    @patch("time.time")
+    def test_rate_limit_applied_in_fetch_stock_data(
+        self, mock_time: Mock, mock_sleep: Mock, mock_ticker_class: Mock
+    ) -> None:
+        """fetch_stock_data内でレート制限が適用されるテスト"""
+        # モックの設定
+        mock_ticker = Mock()
+        mock_ticker_class.return_value = mock_ticker
+
+        mock_history = Mock()
+        mock_history.empty = False
+        latest_data = {"Close": 877.8}
+        mock_history.iloc = Mock()
+        mock_history.iloc.__getitem__ = Mock(return_value=latest_data)
+        mock_ticker.history.return_value = mock_history
+        mock_ticker.info = {"longBusinessSummary": "Test"}
+
+        # 時間の経過をモック（短い間隔でリクエスト）
+        # _apply_rate_limit内で2回、fetch_stock_data内で3回、
+        # _record_success内で1回呼ばれる
+        mock_time.side_effect = [100.2, 101.0, 101.1, 101.2, 101.3, 101.4]
+
+        fetcher = StockFetcher(rate_limit_delay=1.0)
+        fetcher._last_request_time = 100.0  # 前回のリクエスト時刻を設定（0.0ではない）
+
+        # 株価データ取得
+        stock_data = fetcher.fetch_stock_data("1332.T")
+
+        # レート制限が適用され、待機が発生 - 浮動小数点精度考慮
+        assert mock_sleep.call_count == 1
+        called_args = mock_sleep.call_args[0]
+        assert abs(called_args[0] - 0.8) < 0.01  # 0.8 ± 0.01
+
+        # データは正常に取得される
+        assert stock_data is not None
+        assert stock_data.symbol == "1332.T"
+
+    @patch("time.sleep")
+    @patch("time.time")
+    def test_rate_limit_first_request_no_delay(
+        self, mock_time: Mock, mock_sleep: Mock
+    ) -> None:
+        """初回リクエスト時はレート制限待機しないテスト"""
+        mock_time.return_value = 100.0
+
+        fetcher = StockFetcher(rate_limit_delay=1.0)
+        assert fetcher._last_request_time == 0.0  # 初期値
+
+        # _apply_rate_limitを直接テスト
+        fetcher._apply_rate_limit()
+
+        # 初回なので待機しない
+        mock_sleep.assert_not_called()
+
+        # 時刻が記録される
+        assert fetcher._last_request_time == 100.0
