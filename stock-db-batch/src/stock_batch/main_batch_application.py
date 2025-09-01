@@ -17,11 +17,11 @@ from typing import Any
 import psutil
 import yfinance
 
-from stock_batch.database.connection import DatabaseConnection
+from stock_batch.database.thread_safe_connection import ThreadSafeDatabaseConnection
 from stock_batch.services.csv_reader import CSVReader
-from stock_batch.services.database_service import DatabaseService
 from stock_batch.services.differential_processor import DifferentialProcessor
 from stock_batch.services.stock_fetcher import StockFetcher
+from stock_batch.services.thread_safe_database_service import ThreadSafeDatabaseService
 from stock_batch.services.translation import TranslationService
 from stock_batch.services.async_batch_processor import AsyncBatchProcessor
 
@@ -459,11 +459,11 @@ class MainBatchApplication:
             companies: 企業データリスト
             result: バッチ結果（統計更新用）
         """
-        # データベース接続
-        db_connection = DatabaseConnection(self.config.database_path)
-        db_service = DatabaseService(db_connection)
+        # スレッドセーフデータベース接続
+        db_connection = ThreadSafeDatabaseConnection(self.config.database_path)
+        db_service = ThreadSafeDatabaseService(db_connection)
 
-        with db_connection:
+        try:
             # データベース初期化
             db_service.setup_database()
 
@@ -493,6 +493,10 @@ class MainBatchApplication:
                 result.companies_inserted,
                 result.companies_updated,
             )
+
+        finally:
+            # スレッドセーフ接続のクリーンアップ
+            db_connection.cleanup_connection()
 
     def _setup_logging(self) -> None:
         """ログ設定を行う"""
