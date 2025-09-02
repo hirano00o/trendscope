@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -45,6 +46,10 @@ class Company(BaseModel):
     price: float | None = Field(default=None, ge=0.0, description="株価")
     last_updated: datetime | None = Field(default=None, description="最終更新日時")
     created_at: datetime | None = Field(default=None, description="作成日時")
+    
+    # 非同期処理用の追加フィールド
+    stock_data: Any | None = Field(default=None, description="取得した株価データ")
+    business_summary_ja: str | None = Field(default=None, description="翻訳済み企業概要")
 
     def set_timestamps(
         self,
