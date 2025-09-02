@@ -258,3 +258,190 @@ class TranslationService:
     def _record_failure(self) -> None:
         """失敗統計を記録する"""
         self._stats["failed_translations"] += 1
+
+    # 非同期メソッド実装
+
+    async def translate_to_japanese_async(self, text: str | None) -> str:
+        """英語テキストを日本語に非同期翻訳する
+
+        googletrans を使用してテキストを英語から日本語に非同期翻訳する。
+        ネットワークエラーや翻訳失敗の場合はリトライを実行。
+
+        Args:
+            text: 翻訳する英語テキスト
+
+        Returns:
+            日本語翻訳テキスト。翻訳失敗時は元のテキストを返す。
+
+        Example:
+            >>> service = TranslationService()
+            >>> result = await service.translate_to_japanese_async("Hello, world!")
+            >>> print(result)
+            "こんにちは世界！"
+        """
+        if not text or not text.strip():
+            return ""
+
+        start_time = time.time()
+        self._stats["total_requests"] += 1
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                logger.debug(
+                    "非同期翻訳開始: %s文字 (試行 %d/%d)",
+                    len(text),
+                    attempt,
+                    self.max_retries,
+                )
+
+                # Google翻訳API非同期呼び出し
+                async with Translator() as translator:
+                    result = await translator.translate(text, dest="ja", src="en")
+
+                # 翻訳結果取得
+                translated_text = result.text or text
+
+                # 統計情報更新
+                response_time = time.time() - start_time
+                self._record_success(response_time)
+
+                logger.debug(
+                    "非同期翻訳成功: %s → %s (%.2f秒)",
+                    text[:50] + "..." if len(text) > 50 else text,
+                    (
+                        translated_text[:50] + "..."
+                        if len(translated_text) > 50
+                        else translated_text
+                    ),
+                    response_time,
+                )
+                return translated_text
+
+            except Exception as e:
+                logger.warning(
+                    "非同期翻訳エラー: %s... (試行 %d/%d) - %s",
+                    text[:30] + "..." if len(text) > 30 else text,
+                    attempt,
+                    self.max_retries,
+                    e,
+                )
+
+                if attempt < self.max_retries:
+                    logger.debug("リトライまで %s秒待機", self.retry_delay)
+                    await asyncio.sleep(self.retry_delay)
+                else:
+                    logger.error(
+                        "非同期翻訳失敗（リトライ上限到達）: %s...",
+                        text[:30] + "..." if len(text) > 30 else text,
+                    )
+
+        # 翻訳失敗時は元のテキストを返す
+        self._record_failure()
+        return text
+
+    async def translate_multiple_texts_async(
+        self, texts: list[str], max_concurrent: int = 3
+    ) -> list[str]:
+        """複数のテキストを日本語に非同期翻訳する
+
+        セマフォを使用した並行処理制限でレート制限を回避しつつ効率的に処理する。
+
+        Args:
+            texts: 翻訳する英語テキストのリスト
+            max_concurrent: 最大並行数（デフォルト: 3）
+
+        Returns:
+            日本語翻訳テキストのリスト
+
+        Example:
+            >>> service = TranslationService()
+            >>> texts = ["Hello", "World", "Python"]
+            >>> results = await service.translate_multiple_texts_async(texts)
+            >>> print(results)
+            ["こんにちは", "世界", "パイソン"]
+        """
+        if not texts:
+            return []
+
+        logger.info("複数テキスト非同期翻訳開始: %d件", len(texts))
+        start_time = time.time()
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def translate_with_limit(text: str) -> str:
+            async with semaphore:
+                result = await self.translate_to_japanese_async(text)
+                # 並行制御のための小さな遅延
+                await asyncio.sleep(0.1)
+                return result
+
+        # 並行実行
+        tasks = [translate_with_limit(text) for text in texts]
+        translated_texts = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 例外処理と結果のクリーンアップ
+        results = []
+        successful_count = 0
+        
+        for i, result in enumerate(translated_texts):
+            if isinstance(result, Exception):
+                logger.error("翻訳タスクエラー: %s - %s", texts[i], result)
+                results.append(texts[i])  # エラー時は元のテキスト
+            else:
+                results.append(result)
+                if result != texts[i]:
+                    successful_count += 1
+
+        elapsed_time = time.time() - start_time
+        logger.info(
+            "複数テキスト非同期翻訳完了: %d/%d件成功 (%.2f秒)",
+            successful_count,
+            len(texts),
+            elapsed_time,
+        )
+
+        return results
+
+    async def translate_companies_async(self, companies: list[Any]) -> list[Any]:
+        """企業リストのビジネス要約を非同期翻訳する
+
+        企業オブジェクトのbusiness_summary属性を翻訳し、元のオブジェクトを更新する。
+
+        Args:
+            companies: 翻訳する企業オブジェクトのリスト
+
+        Returns:
+            翻訳済み企業オブジェクトのリスト
+
+        Example:
+            >>> service = TranslationService()
+            >>> companies = [company1, company2, company3]
+            >>> translated_companies = await service.translate_companies_async(companies)
+        """
+        if not companies:
+            return []
+
+        logger.info("企業リスト非同期翻訳開始: %d社", len(companies))
+        start_time = time.time()
+
+        # business_summary を抽出
+        texts = [
+            getattr(company, "business_summary", "") or "" for company in companies
+        ]
+
+        # 並行翻訳実行
+        translated_texts = await self.translate_multiple_texts_async(texts)
+
+        # 企業オブジェクトを更新
+        for i, company in enumerate(companies):
+            if hasattr(company, "business_summary"):
+                company.business_summary = translated_texts[i]
+
+        elapsed_time = time.time() - start_time
+        logger.info(
+            "企業リスト非同期翻訳完了: %d社 (%.2f秒)",
+            len(companies),
+            elapsed_time,
+        )
+
+        return companies

@@ -20,7 +20,7 @@ spec:
     spec:
       # Job失敗時のリトライ設定
       backoffLimit: 2
-      activeDeadlineSeconds: 3600  # 1時間でタイムアウト
+      activeDeadlineSeconds: 10800  # 3時間でタイムアウト
       template:
         metadata:
           labels:
