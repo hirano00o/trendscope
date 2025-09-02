@@ -513,6 +513,10 @@ class MainBatchApplication:
         stock_batch_logger = logging.getLogger("stock_batch")
         stock_batch_logger.setLevel(log_level)
 
+        # httpxのログレベルをWARNINGに設定してHTTP 200 OKログを抑制
+        httpx_logger = logging.getLogger("httpx")
+        httpx_logger.setLevel(logging.WARNING)
+
     def _setup_yfinance_cache(self) -> None:
         """yfinanceキャッシュ設定を行う
 
