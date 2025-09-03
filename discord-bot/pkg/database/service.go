@@ -368,6 +368,16 @@ func (s *Service) GetConfig() *configs.Config {
 	return s.config
 }
 
+// GetRepository returns the underlying repository
+//
+// @description 基礎となるリポジトリを取得する
+// テストやデバッグ用途
+//
+// @returns {*Repository} リポジトリインスタンス
+func (s *Service) GetRepository() *Repository {
+	return s.repo
+}
+
 // String returns a string representation of the service
 //
 // @description サービスの文字列表現を返す
