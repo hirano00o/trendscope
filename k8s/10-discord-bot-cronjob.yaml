@@ -62,6 +62,7 @@ spec:
               readOnly: true
             - name: database-storage
               mountPath: /data/db
+              readOnly: true
             
             # Resource limits
             resources:
@@ -89,7 +90,7 @@ spec:
               name: trendscope-discord-bot-csv
           - name: database-storage
             persistentVolumeClaim:
-              claimName: trendscope-database-pvc
+              claimName: discord-bot-database-pvc
           
           # Pod security context
           securityContext:
