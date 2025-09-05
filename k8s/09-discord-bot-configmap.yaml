@@ -18,7 +18,7 @@ data:
   LOG_LEVEL: "INFO"  # "DEBUG", "INFO", "WARN", "ERROR"
   
   # SQLite Database configuration
-  DATABASE_PATH: "/data/db/stock_data.db"
+  DATABASE_PATH: "/data/db/stocks.db"
   PRICE_FILTER_ENABLED: "true"
   MIN_STOCK_PRICE: "100.0"
   MAX_STOCK_PRICE: "5000.0"
