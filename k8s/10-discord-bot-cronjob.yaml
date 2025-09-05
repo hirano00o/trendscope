@@ -55,11 +55,13 @@ spec:
                   name: trendscope-discord-bot-secret
                   key: DISCORD_WEBHOOK_URL
             
-            # Volume mounts for CSV data
+            # Volume mounts for CSV data and database
             volumeMounts:
             - name: csv-data
               mountPath: /data
               readOnly: true
+            - name: database-storage
+              mountPath: /data/db
             
             # Resource limits
             resources:
@@ -85,6 +87,9 @@ spec:
           - name: csv-data
             configMap:
               name: trendscope-discord-bot-csv
+          - name: database-storage
+            persistentVolumeClaim:
+              claimName: trendscope-database-pvc
           
           # Pod security context
           securityContext:
