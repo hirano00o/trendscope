@@ -1,0 +1,241 @@
+[project]
+name = "monthlyswing-backend"
+version = "0.1.0"
+description = "月次スイングトレード戦略に特化した金融分析APIシステム"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "Trendscope Team", email = "team@trendscope.dev" }
+]
+keywords = ["finance", "trading", "swing-trading", "technical-analysis", "fastapi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+
+dependencies = [
+    # Web Framework & API
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.0.0",
+    
+    # Financial Data & Analysis
+    "yfinance>=0.2.25",
+    "pandas>=2.1.0",
+    "numpy>=1.25.0",
+    "scipy>=1.11.0",
+    "scikit-learn>=1.3.0",
+    
+    # Technical Analysis
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "ta>=0.10.2",
+    "QuantLib>=1.32",
+    
+    # Database & Caching
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "redis>=5.0.0",
+    "psycopg2-binary>=2.9.7",
+    
+    # Security & Authentication
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "cryptography>=41.0.0",
+    
+    # Utilities
+    "python-multipart>=0.0.6",
+    "email-validator>=2.0.0",
+    "httpx>=0.25.0",
+    "structlog>=23.0.0",
+    "python-dateutil>=2.8.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+    "mypy>=1.7.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "pre-commit>=3.5.0",
+]
+
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+    "httpx>=0.25.0",
+    "fakeredis>=2.18.0",
+]
+
+[project.scripts]
+monthlyswing = "main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# uv設定
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.6.0",
+    "mypy>=1.7.0",
+]
+
+# セキュリティ・コンプライアンス設定
+index = [
+    { url = "https://pypi.org/simple", default = true }
+]
+
+# ruff設定（金融アプリケーション用）
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [
+    ".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".venv",
+    "build", "dist", "migrations"
+]
+
+[tool.ruff.lint]
+# 金融アプリケーション向け包括的ルールセット
+select = [
+    "E", "W", "F",    # pycodestyle + pyflakes (基本)
+    "I",              # isort (import並び替え)
+    "N",              # pep8-naming (命名規則)
+    "UP",             # pyupgrade (Python新機能)
+    "S",              # bandit (セキュリティ)
+    "B",              # flake8-bugbear (バグ発見)
+    "A",              # flake8-builtins (組み込み関数)
+    "C4",             # flake8-comprehensions (内包表記)
+    "T20",            # flake8-print (print文)
+    "SIM",            # flake8-simplify (簡素化)
+    "TCH",            # flake8-type-checking (型チェック)
+    "ANN",            # flake8-annotations (型注釈)
+    "D",              # pydocstyle (ドキュメンテーション)
+    "RUF",            # Ruff固有ルール
+]
+
+ignore = [
+    "E501",    # 行長過多（フォーマッターで処理）
+    "S101",    # assertの使用（テストで一般的）
+    "D203",    # クラスdocstringの前の空行
+    "D213",    # 複数行要約の2行目
+]
+
+fixable = ["ALL"]
+unfixable = ["B", "S", "PLR"]  # セキュリティ問題は手動確認が必要
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "T201", "D"]
+"scripts/**/*.py" = ["T201"]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["monthlyswing_backend"]
+known-third-party = ["fastapi", "pydantic", "sqlalchemy", "yfinance"]
+section-order = [
+    "future", "standard-library", "third-party", 
+    "financial-libs", "first-party", "local-folder"
+]
+
+[tool.ruff.lint.isort.sections]
+"financial-libs" = ["pandas", "numpy", "scipy", "quantlib", "yfinance", "ta"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-bandit]
+check-typed-exception = true
+
+# pytest設定
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src/monthlyswing_backend",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "api: marks tests as API tests",
+    "performance: marks tests as performance tests",
+]
+asyncio_mode = "auto"
+
+# mypy設定
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "yfinance.*",
+    "ta.*",
+    "quantlib.*",
+]
+ignore_missing_imports = true
+
+# カバレッジ設定
+[tool.coverage.run]
+source = ["src/monthlyswing_backend"]
+omit = [
+    "*/tests/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
