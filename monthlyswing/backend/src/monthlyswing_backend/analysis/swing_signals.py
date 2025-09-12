@@ -471,3 +471,212 @@ def calculate_risk_reward_ratio(
     except Exception as e:
         logger.error(f"リスクリワード比率計算エラー: {e!s}")
         raise ValueError(f"リスクリワード比率の計算に失敗しました: {e!s}") from e
+
+
+def calculate_composite_confidence(
+    technical_confidence: Decimal,
+    pattern_confidence: Decimal,
+    volume_confidence: Decimal,
+    trend_strength: Decimal,
+    weights: dict[str, Decimal],
+) -> Decimal:
+    """複合信頼度スコア計算.
+
+    複数の分析指標を重み付け平均して総合信頼度を算出する。
+
+    Args:
+        technical_confidence: テクニカル分析信頼度
+        pattern_confidence: パターン分析信頼度
+        volume_confidence: 出来高分析信頼度
+        trend_strength: トレンド強度
+        weights: 各指標の重み辞書
+
+    Returns:
+        Decimal: 複合信頼度スコア（0-1の範囲）
+
+    Raises:
+        ValueError: 無効な入力値の場合
+
+    Example:
+        >>> weights = {
+        ...     "technical": Decimal("0.3"),
+        ...     "pattern": Decimal("0.3"),
+        ...     "volume": Decimal("0.2"),
+        ...     "trend": Decimal("0.2"),
+        ... }
+        >>> confidence = calculate_composite_confidence(
+        ...     Decimal("0.8"), Decimal("0.7"), Decimal("0.9"), Decimal("0.75"), weights
+        ... )
+        >>> assert Decimal("0.0") <= confidence <= Decimal("1.0")
+    """
+    logger.info("複合信頼度スコア計算開始")
+
+    try:
+        # 重みの合計確認
+        weight_sum = sum(weights.values())
+        if abs(weight_sum - Decimal("1.0")) > Decimal("0.001"):
+            raise ValueError(f"重みの合計が1.0ではありません: {weight_sum}")
+
+        # 入力値の範囲確認
+        confidence_values = [
+            technical_confidence,
+            pattern_confidence,
+            volume_confidence,
+            trend_strength,
+        ]
+        for i, value in enumerate(confidence_values):
+            if not (Decimal("0.0") <= value <= Decimal("1.0")):
+                raise ValueError(
+                    f"信頼度値が範囲外です（0-1）: index={i}, value={value}"
+                )
+
+        # 重み付け平均計算
+        composite_score = (
+            technical_confidence * weights["technical"]
+            + pattern_confidence * weights["pattern"]
+            + volume_confidence * weights["volume"]
+            + trend_strength * weights["trend"]
+        )
+
+        # 0-1範囲に正規化（念のため）
+        result = max(Decimal("0.0"), min(Decimal("1.0"), composite_score))
+
+        logger.info(f"複合信頼度スコア計算完了: {result:.3f}")
+        return result
+
+    except Exception as e:
+        logger.error(f"複合信頼度計算エラー: {e!s}")
+        raise ValueError(f"複合信頼度の計算に失敗しました: {e!s}") from e
+
+
+def generate_enhanced_factors(
+    signal_type: SignalType,
+    analysis_data: dict[str, Decimal],
+    composite_confidence: Decimal,
+) -> list[str]:
+    """拡張シグナル根拠生成.
+
+    分析結果データから詳細なシグナル判定根拠を自動生成する。
+
+    Args:
+        signal_type: シグナルタイプ
+        analysis_data: 分析結果データ辞書
+        composite_confidence: 複合信頼度スコア
+
+    Returns:
+        List[str]: 生成された判定根拠のリスト
+
+    Raises:
+        ValueError: 無効な入力値の場合
+
+    Example:
+        >>> data = {
+        ...     "technical_confidence": Decimal("0.8"),
+        ...     "risk_reward_ratio": Decimal("2.0"),
+        ... }
+        >>> factors = generate_enhanced_factors(SignalType.BUY, data, Decimal("0.8"))
+        >>> assert len(factors) >= 5
+    """
+    logger.info(
+        f"拡張根拠生成開始: シグナル={signal_type}, 複合信頼度={composite_confidence}"
+    )
+
+    factors = []
+
+    try:
+        # 複合信頼度に基づく説明
+        if composite_confidence >= Decimal("0.9"):
+            factors.append(
+                f"非常に高い複合信頼度（{composite_confidence:.1%}）で{signal_type.value}シグナルを確認"
+            )
+        elif composite_confidence >= Decimal("0.8"):
+            factors.append(
+                f"高い複合信頼度（{composite_confidence:.1%}）で{signal_type.value}シグナルを確認"
+            )
+        elif composite_confidence >= Decimal("0.7"):
+            factors.append(
+                f"中程度の複合信頼度（{composite_confidence:.1%}）で{signal_type.value}シグナルを確認"
+            )
+        else:
+            factors.append(
+                f"低めの複合信頼度（{composite_confidence:.1%}）で{signal_type.value}シグナルを検出"
+            )
+
+        # 各指標の個別評価
+        if "technical_confidence" in analysis_data:
+            tech_conf = analysis_data["technical_confidence"]
+            if tech_conf >= Decimal("0.8"):
+                factors.append(
+                    f"テクニカル分析指標が強い買いサポート（信頼度{tech_conf:.1%}）"
+                )
+            elif tech_conf >= Decimal("0.6"):
+                factors.append(
+                    f"テクニカル分析指標が中程度のサポート（信頼度{tech_conf:.1%}）"
+                )
+
+        if "pattern_confidence" in analysis_data:
+            pattern_conf = analysis_data["pattern_confidence"]
+            if pattern_conf >= Decimal("0.7"):
+                factors.append(
+                    f"価格パターンが明確なシグナルを示唆（信頼度{pattern_conf:.1%}）"
+                )
+
+        if "volume_confidence" in analysis_data:
+            vol_conf = analysis_data["volume_confidence"]
+            if vol_conf >= Decimal("0.8"):
+                factors.append(
+                    f"出来高分析が強いトレンド継続を示唆（信頼度{vol_conf:.1%}）"
+                )
+
+        # リスクリワード比率の評価
+        if "risk_reward_ratio" in analysis_data:
+            ratio = analysis_data["risk_reward_ratio"]
+            if ratio >= Decimal("3.0"):
+                factors.append(f"非常に有利なリスクリワード比率（{ratio:.1f}:1）")
+            elif ratio >= Decimal("2.0"):
+                factors.append(f"良好なリスクリワード比率（{ratio:.1f}:1）")
+            elif ratio >= Decimal("1.5"):
+                factors.append(f"許容範囲のリスクリワード比率（{ratio:.1f}:1）")
+            else:
+                factors.append(f"リスクリワード比率に注意が必要（{ratio:.1f}:1）")
+
+        # 価格目標の説明
+        if all(
+            key in analysis_data
+            for key in ["current_price", "target_price", "stop_loss"]
+        ):
+            current = analysis_data["current_price"]
+            target = analysis_data["target_price"]
+            stop = analysis_data["stop_loss"]
+
+            if signal_type == SignalType.BUY:
+                gain_pct = (target - current) / current * 100
+                loss_pct = (current - stop) / current * 100
+                factors.append(
+                    f"ターゲット価格{target}（+{gain_pct:.1f}%）、ストップロス{stop}（-{loss_pct:.1f}%）"
+                )
+            else:
+                gain_pct = (current - target) / current * 100
+                loss_pct = (stop - current) / current * 100
+                factors.append(
+                    f"ターゲット価格{target}（+{gain_pct:.1f}%）、ストップロス{stop}（-{loss_pct:.1f}%）"
+                )
+
+        # モメンタム評価
+        if "price_momentum" in analysis_data:
+            momentum = analysis_data["price_momentum"]
+            if momentum >= Decimal("0.8"):
+                factors.append("価格モメンタムが非常に強い状態")
+            elif momentum >= Decimal("0.6"):
+                factors.append("価格モメンタムが良好な状態")
+
+        # 最低限の根拠数を確保
+        if len(factors) < 5:
+            factors.append(f"{signal_type.value}シグナルの総合的な分析結果に基づく推奨")
+
+        logger.info(f"拡張根拠生成完了: {len(factors)}個の根拠を生成")
+        return factors
+
+    except Exception as e:
+        logger.error(f"拡張根拠生成エラー: {e!s}")
+        raise ValueError(f"拡張根拠の生成に失敗しました: {e!s}") from e

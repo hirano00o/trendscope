@@ -516,8 +516,44 @@ class TestConfidenceAndFactorEvaluation:
             - 重み付け平均による信頼度計算
             - 0-1 範囲での正規化
         """
-        # この機能は次のTDDサイクルで実装
-        pass
+        from monthlyswing_backend.analysis.swing_signals import calculate_composite_confidence
+        from decimal import Decimal
+        
+        # テストデータ準備
+        technical_confidence = Decimal("0.85")  # テクニカル分析信頼度
+        pattern_confidence = Decimal("0.70")    # パターン分析信頼度
+        volume_confidence = Decimal("0.90")     # 出来高分析信頼度
+        trend_strength = Decimal("0.80")        # トレンド強度
+        
+        # 重みの設定（合計1.0）
+        weights = {
+            "technical": Decimal("0.30"),
+            "pattern": Decimal("0.25"), 
+            "volume": Decimal("0.20"),
+            "trend": Decimal("0.25")
+        }
+        
+        # 複合信頼度計算実行
+        composite_confidence = calculate_composite_confidence(
+            technical_confidence=technical_confidence,
+            pattern_confidence=pattern_confidence,
+            volume_confidence=volume_confidence,
+            trend_strength=trend_strength,
+            weights=weights
+        )
+        
+        # 検証
+        assert composite_confidence is not None
+        assert Decimal("0.0") <= composite_confidence <= Decimal("1.0")  # 0-1範囲内
+        
+        # 手動計算による検証
+        expected = (
+            technical_confidence * weights["technical"] +
+            pattern_confidence * weights["pattern"] +
+            volume_confidence * weights["volume"] +
+            trend_strength * weights["trend"]
+        )
+        assert abs(composite_confidence - expected) < Decimal("0.001")  # 計算精度確認
 
     def test_generate_supporting_factors_automatically(self):
         """シグナル根拠の自動生成.
@@ -530,8 +566,112 @@ class TestConfidenceAndFactorEvaluation:
             - 判定根拠の自動生成
             - 日本語での説明文
         """
-        # この機能は次のTDDサイクルで実装
-        pass
+        from monthlyswing_backend.analysis.swing_signals import generate_enhanced_factors
+        from decimal import Decimal
+        
+        # テストデータ準備
+        analysis_data = {
+            "technical_confidence": Decimal("0.85"),
+            "pattern_confidence": Decimal("0.70"),
+            "volume_confidence": Decimal("0.90"),
+            "trend_strength": Decimal("0.80"),
+            "price_momentum": Decimal("0.75"),
+            "risk_reward_ratio": Decimal("2.5"),
+            "target_price": Decimal("110.00"),
+            "stop_loss": Decimal("95.00"),
+            "current_price": Decimal("100.00")
+        }
+        
+        signal_type = SignalType.BUY
+        composite_confidence = Decimal("0.81")  # 複合信頼度
+        
+        # 拡張根拠生成実行
+        factors = generate_enhanced_factors(
+            signal_type=signal_type,
+            analysis_data=analysis_data,
+            composite_confidence=composite_confidence
+        )
+        
+        # 検証
+        assert isinstance(factors, list)
+        assert len(factors) >= 5  # 最低5つの根拠
+        
+        # 信頼度に関する説明が含まれているか
+        confidence_explained = any("信頼度" in factor for factor in factors)
+        assert confidence_explained
+        
+        # リスクリワード比率の説明が含まれているか
+        risk_reward_explained = any("リスク" in factor for factor in factors)
+        assert risk_reward_explained
+        
+        # 価格目標の説明が含まれているか
+        price_target_explained = any("ターゲット" in factor or "目標" in factor for factor in factors)
+        assert price_target_explained
+        
+        # 全ての根拠が文字列で日本語で記述されているか
+        for factor in factors:
+            assert isinstance(factor, str)
+            assert len(factor) > 0
+            
+    def test_confidence_score_edge_cases(self):
+        """信頼度計算のエッジケーステスト.
+        
+        Given:
+            - 極端な値（0.0, 1.0）
+            - 不均等な重み
+            
+        Expected:
+            - 適切な範囲制限
+            - エラーハンドリング
+        """
+        from monthlyswing_backend.analysis.swing_signals import calculate_composite_confidence
+        from decimal import Decimal
+        
+        # エッジケース1: 全て最小値
+        weights_balanced = {
+            "technical": Decimal("0.25"),
+            "pattern": Decimal("0.25"),
+            "volume": Decimal("0.25"),
+            "trend": Decimal("0.25")
+        }
+        
+        min_confidence = calculate_composite_confidence(
+            technical_confidence=Decimal("0.0"),
+            pattern_confidence=Decimal("0.0"),
+            volume_confidence=Decimal("0.0"),
+            trend_strength=Decimal("0.0"),
+            weights=weights_balanced
+        )
+        assert min_confidence == Decimal("0.0")
+        
+        # エッジケース2: 全て最大値
+        max_confidence = calculate_composite_confidence(
+            technical_confidence=Decimal("1.0"),
+            pattern_confidence=Decimal("1.0"),
+            volume_confidence=Decimal("1.0"),
+            trend_strength=Decimal("1.0"),
+            weights=weights_balanced
+        )
+        assert max_confidence == Decimal("1.0")
+        
+        # エッジケース3: 不均等な重み
+        unbalanced_weights = {
+            "technical": Decimal("0.70"),
+            "pattern": Decimal("0.10"),
+            "volume": Decimal("0.10"),
+            "trend": Decimal("0.10")
+        }
+        
+        unbalanced_confidence = calculate_composite_confidence(
+            technical_confidence=Decimal("0.9"),  # 高い値
+            pattern_confidence=Decimal("0.3"),    # 低い値
+            volume_confidence=Decimal("0.3"),     # 低い値
+            trend_strength=Decimal("0.3"),        # 低い値
+            weights=unbalanced_weights
+        )
+        
+        # テクニカル分析の重みが高いため、結果もそれに近くなるはず
+        assert unbalanced_confidence > Decimal("0.7")  # テクニカル分析寄り
 
 
 class TestIntegratedSignalGenerator:
