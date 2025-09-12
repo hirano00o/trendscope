@@ -23,6 +23,7 @@ from decimal import Decimal
 from monthlyswing_backend.models.swing_models import (
     MonthlyTrendResult,
     SignalType,
+    SupportResistanceLevel,
     SwingSignal,
     TrendDirection,
 )
@@ -250,3 +251,223 @@ def _generate_basic_factors(
         factors.append("様子見推奨（不確実性が高い）")
 
     return factors
+
+
+def calculate_target_price(
+    current_price: Decimal,
+    signal_type: SignalType,
+    resistance_levels: list[SupportResistanceLevel],
+    support_levels: list[SupportResistanceLevel],
+    expected_return_rate: Decimal,
+) -> Decimal:
+    """ターゲット価格計算.
+
+    現在価格とレジスタンスレベルからターゲット価格を算出する。
+
+    Args:
+        current_price: 現在の株価
+        signal_type: シグナルタイプ（BUY/SELL）
+        resistance_levels: レジスタンス・サポートレベルのリスト
+        support_levels: サポートレベルのリスト
+        expected_return_rate: 期待リターン率（0-1の範囲）
+
+    Returns:
+        Decimal: 計算されたターゲット価格
+
+    Raises:
+        ValueError: 無効な入力値の場合
+
+    Example:
+        >>> target = calculate_target_price(
+        ...     Decimal("100.00"), SignalType.BUY, resistance_levels
+        ... )
+        >>> assert target > Decimal("100.00")
+    """
+    logger.info(
+        f"ターゲット価格計算開始: 現在価格={current_price}, シグナル={signal_type}"
+    )
+
+    if current_price <= 0:
+        raise ValueError("現在価格は正の値である必要があります")
+
+    if not resistance_levels:
+        # レジスタンスレベルがない場合のデフォルト計算
+        if signal_type == SignalType.BUY:
+            return current_price * Decimal("1.10")  # 10%上昇を目標
+        else:  # SELL
+            return current_price * Decimal("0.90")  # 10%下降を目標
+
+    try:
+        if signal_type == SignalType.BUY:
+            # 買いシグナル：現在価格より上のレジスタンスレベルを目標
+            upper_resistances = [
+                level
+                for level in resistance_levels
+                if level.level_type == "レジスタンス" and level.level > current_price
+            ]
+            if upper_resistances:
+                # 最も近いレジスタンスレベルを目標とする
+                nearest_resistance = min(
+                    upper_resistances, key=lambda x: x.level - current_price
+                )
+                return nearest_resistance.level
+            else:
+                # レジスタンスがない場合は15%上昇を目標
+                return current_price * Decimal("1.15")
+
+        else:  # SELL
+            # 売りシグナル：現在価格より下のサポートレベルを目標
+            lower_supports = [
+                level
+                for level in support_levels
+                if level.level_type == "サポート" and level.level < current_price
+            ]
+            if lower_supports:
+                # 最も近いサポートレベルを目標とする
+                nearest_support = max(lower_supports, key=lambda x: x.level)
+                return nearest_support.level
+            else:
+                # サポートがない場合は15%下降を目標
+                return current_price * Decimal("0.85")
+
+    except Exception as e:
+        logger.error(f"ターゲット価格計算エラー: {e!s}")
+        raise ValueError(f"ターゲット価格の計算に失敗しました: {e!s}") from e
+
+
+def calculate_stop_loss(
+    current_price: Decimal,
+    signal_type: SignalType,
+    support_levels: list[SupportResistanceLevel],
+    resistance_levels: list[SupportResistanceLevel],
+    risk_tolerance: Decimal,
+) -> Decimal:
+    """ストップロス価格計算.
+
+    現在価格とサポートレベルからストップロス価格を算出する。
+
+    Args:
+        current_price: 現在の株価
+        signal_type: シグナルタイプ（BUY/SELL）
+        support_levels: サポート・レジスタンスレベルのリスト
+        resistance_levels: レジスタンスレベルのリスト
+        risk_tolerance: リスク許容度（0-1の範囲）
+
+    Returns:
+        Decimal: 計算されたストップロス価格
+
+    Raises:
+        ValueError: 無効な入力値の場合
+
+    Example:
+        >>> stop_loss = calculate_stop_loss(
+        ...     Decimal("100.00"), SignalType.BUY, support_levels
+        ... )
+        >>> assert stop_loss < Decimal("100.00")
+    """
+    logger.info(
+        f"ストップロス計算開始: 現在価格={current_price}, シグナル={signal_type}"
+    )
+
+    if current_price <= 0:
+        raise ValueError("現在価格は正の値である必要があります")
+
+    if not support_levels:
+        # サポートレベルがない場合のデフォルト計算
+        if signal_type == SignalType.BUY:
+            return current_price * Decimal("0.95")  # 5%下落でストップ
+        else:  # SELL
+            return current_price * Decimal("1.05")  # 5%上昇でストップ
+
+    try:
+        if signal_type == SignalType.BUY:
+            # 買いシグナル：現在価格より下のサポートレベルをストップロスとする
+            lower_supports = [
+                level
+                for level in support_levels
+                if level.level_type == "サポート" and level.level < current_price
+            ]
+            if lower_supports:
+                # 最も近いサポートレベルをストップロスとする
+                nearest_support = max(lower_supports, key=lambda x: x.level)
+                # サポートレベル付近に設定（わずかに上）
+                return nearest_support.level
+            else:
+                # サポートがない場合は8%下落でストップ
+                return current_price * Decimal("0.92")
+
+        else:  # SELL
+            # 売りシグナル：現在価格より上のレジスタンスレベルをストップロスとする
+            upper_resistances = [
+                level
+                for level in resistance_levels
+                if level.level_type == "レジスタンス" and level.level > current_price
+            ]
+            if upper_resistances:
+                # 最も近いレジスタンスレベルをストップロスとする
+                nearest_resistance = min(
+                    upper_resistances, key=lambda x: x.level - current_price
+                )
+                # レジスタンスレベルより少し上にマージンを設ける
+                return nearest_resistance.level * Decimal("1.02")
+            else:
+                # レジスタンスがない場合は8%上昇でストップ
+                return current_price * Decimal("1.08")
+
+    except Exception as e:
+        logger.error(f"ストップロス計算エラー: {e!s}")
+        raise ValueError(f"ストップロス価格の計算に失敗しました: {e!s}") from e
+
+
+def calculate_risk_reward_ratio(
+    current_price: Decimal, target_price: Decimal, stop_loss: Decimal
+) -> Decimal:
+    """リスクリワード比率計算.
+
+    現在価格、ターゲット価格、ストップロス価格からリスクリワード比率を計算する。
+
+    Args:
+        current_price: 現在の株価
+        target_price: ターゲット価格
+        stop_loss: ストップロス価格
+
+    Returns:
+        Decimal: リスクリワード比率（リワード/リスク）
+
+    Raises:
+        ValueError: 無効な入力値の場合
+
+    Example:
+        >>> ratio = calculate_risk_reward_ratio(
+        ...     Decimal("100.00"), Decimal("110.00"), Decimal("95.00")
+        ... )
+        >>> assert ratio == Decimal("2.0")  # 10%リワード / 5%リスク = 2.0
+    """
+    logger.info(
+        f"リスクリワード比率計算: 現在={current_price}, 目標={target_price}, ストップ={stop_loss}"
+    )
+
+    if current_price <= 0 or target_price <= 0 or stop_loss <= 0:
+        raise ValueError("全ての価格は正の値である必要があります")
+
+    try:
+        # 利益の絶対値を計算
+        reward = abs(target_price - current_price)
+
+        # 損失の絶対値を計算
+        risk = abs(current_price - stop_loss)
+
+        if risk == 0:
+            raise ValueError("リスクが0では比率を計算できません")
+
+        # リスクリワード比率 = リワード / リスク
+        ratio = reward / risk
+
+        logger.info(
+            f"リスクリワード比率: {ratio:.2f} (リワード: {reward}, リスク: {risk})"
+        )
+        return ratio
+
+    except Exception as e:
+        logger.error(f"リスクリワード比率計算エラー: {e!s}")
+        raise ValueError(f"リスクリワード比率の計算に失敗しました: {e!s}") from e

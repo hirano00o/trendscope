@@ -303,8 +303,47 @@ class TestPriceLevelCalculation:
             - 適切なターゲット価格が計算される
             - リスクリワード比率が合理的
         """
-        # この機能は次のTDDサイクルで実装
-        pass
+        from monthlyswing_backend.analysis.swing_signals import calculate_target_price
+        from decimal import Decimal
+        
+        # テストデータ準備
+        current_price = Decimal("100.00")
+        resistance_levels = [
+            SupportResistanceLevel(
+                level=Decimal("120.00"),
+                confidence=Decimal("0.85"),
+                touch_count=3,
+                last_touch_date=datetime(2024, 1, 15),
+                level_type="レジスタンス",
+                strength_score=Decimal("0.8")
+            ),
+            SupportResistanceLevel(
+                level=Decimal("125.00"),
+                confidence=Decimal("0.75"),
+                touch_count=2,
+                last_touch_date=datetime(2024, 1, 10),
+                level_type="レジスタンス", 
+                strength_score=Decimal("0.7")
+            )
+        ]
+        
+        signal_type = SignalType.BUY
+        expected_return_rate = Decimal("0.15")  # 15%期待リターン
+        
+        # ターゲット価格計算実行
+        target_price = calculate_target_price(
+            current_price=current_price,
+            signal_type=signal_type,
+            resistance_levels=resistance_levels,
+            support_levels=[],
+            expected_return_rate=expected_return_rate
+        )
+        
+        # 検証
+        assert target_price is not None
+        assert target_price > current_price  # BUYなので現在価格より高い
+        assert target_price <= Decimal("120.00")  # 最初のレジスタンスレベル以下
+        assert target_price >= current_price * (Decimal("1.0") + expected_return_rate * Decimal("0.8"))  # 期待リターンの80%以上
 
     def test_calculate_stop_loss_from_support_levels(self):
         """サポートレベルからストップロス計算.
@@ -318,8 +357,145 @@ class TestPriceLevelCalculation:
             - 適切なストップロス価格が計算される
             - 損失が許容範囲内
         """
-        # この機能は次のTDDサイクルで実装
-        pass
+        from monthlyswing_backend.analysis.swing_signals import calculate_stop_loss
+        from decimal import Decimal
+        
+        # テストデータ準備
+        current_price = Decimal("100.00")
+        support_levels = [
+            SupportResistanceLevel(
+                level=Decimal("95.00"),
+                confidence=Decimal("0.80"),
+                touch_count=4,
+                last_touch_date=datetime(2024, 1, 20),
+                level_type="サポート",
+                strength_score=Decimal("0.85")
+            ),
+            SupportResistanceLevel(
+                level=Decimal("90.00"),
+                confidence=Decimal("0.70"),
+                touch_count=2,
+                last_touch_date=datetime(2024, 1, 5),
+                level_type="サポート",
+                strength_score=Decimal("0.65")
+            )
+        ]
+        
+        signal_type = SignalType.BUY
+        risk_tolerance = Decimal("0.08")  # 8%リスク許容度
+        
+        # ストップロス計算実行
+        stop_loss = calculate_stop_loss(
+            current_price=current_price,
+            signal_type=signal_type,
+            support_levels=support_levels,
+            resistance_levels=[],
+            risk_tolerance=risk_tolerance
+        )
+        
+        # 検証
+        assert stop_loss is not None
+        assert stop_loss < current_price  # BUYなので現在価格より低い
+        assert stop_loss >= Decimal("95.00")  # サポートレベル付近
+        loss_rate = (current_price - stop_loss) / current_price
+        assert loss_rate <= risk_tolerance * Decimal("1.2")  # 許容損失の120%以内
+
+    def test_calculate_risk_reward_ratio(self):
+        """リスクリワード比率計算.
+        
+        Given:
+            - 現在価格
+            - ターゲット価格
+            - ストップロス価格
+            
+        Expected:
+            - 適切なリスクリワード比率が計算される
+            - 最低1.5:1以上が推奨
+        """
+        from monthlyswing_backend.analysis.swing_signals import calculate_risk_reward_ratio
+        from decimal import Decimal
+        
+        current_price = Decimal("100.00")
+        target_price = Decimal("115.00")  # 15%利益
+        stop_loss = Decimal("92.00")      # 8%損失
+        
+        # リスクリワード比率計算
+        ratio = calculate_risk_reward_ratio(
+            current_price=current_price,
+            target_price=target_price,
+            stop_loss=stop_loss
+        )
+        
+        # 検証
+        assert ratio is not None
+        assert ratio >= Decimal("1.5")  # 最低1.5:1比率
+        expected_ratio = Decimal("15") / Decimal("8")  # 15%÷8% = 1.875
+        assert abs(ratio - expected_ratio) < Decimal("0.1")
+
+    def test_sell_signal_price_calculations(self):
+        """SELLシグナル用価格計算.
+        
+        Given:
+            - SELLシグナル
+            - サポート・レジスタンスレベル
+            
+        Expected:
+            - ターゲット価格 < 現在価格
+            - ストップロス > 現在価格
+            - 適切なリスクリワード比率
+        """
+        from monthlyswing_backend.analysis.swing_signals import (
+            calculate_target_price, calculate_stop_loss
+        )
+        from decimal import Decimal
+        
+        current_price = Decimal("100.00")
+        
+        # SELLシグナル用サポートレベル
+        support_levels = [
+            SupportResistanceLevel(
+                level=Decimal("85.00"),
+                confidence=Decimal("0.80"),
+                touch_count=3,
+                last_touch_date=datetime(2024, 1, 15),
+                level_type="サポート",
+                strength_score=Decimal("0.75")
+            )
+        ]
+        
+        # SELLシグナル用レジスタンスレベル  
+        resistance_levels = [
+            SupportResistanceLevel(
+                level=Decimal("105.00"),
+                confidence=Decimal("0.85"),
+                touch_count=4,
+                last_touch_date=datetime(2024, 1, 20),
+                level_type="レジスタンス",
+                strength_score=Decimal("0.80")
+            )
+        ]
+        
+        # SELLシグナル価格計算
+        target_price = calculate_target_price(
+            current_price=current_price,
+            signal_type=SignalType.SELL,
+            resistance_levels=resistance_levels,
+            support_levels=support_levels,
+            expected_return_rate=Decimal("0.12")
+        )
+        
+        stop_loss = calculate_stop_loss(
+            current_price=current_price,
+            signal_type=SignalType.SELL,
+            support_levels=support_levels,
+            resistance_levels=resistance_levels,
+            risk_tolerance=Decimal("0.06")
+        )
+        
+        # 検証
+        assert target_price < current_price  # SELLなので現在価格より低い
+        assert stop_loss > current_price     # SELLなので現在価格より高い
+        assert target_price >= Decimal("85.00")  # サポートレベル以上
 
 
 class TestConfidenceAndFactorEvaluation:
