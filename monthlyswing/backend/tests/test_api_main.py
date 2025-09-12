@@ -64,7 +64,9 @@ class TestHealthEndpoint:
         assert response.headers.get("X-Content-Type-Options") == "nosniff"
         assert response.headers.get("X-Frame-Options") == "DENY"
         assert response.headers.get("X-XSS-Protection") == "1; mode=block"
-        assert "max-age=31536000" in response.headers.get("Strict-Transport-Security", "")
+        assert "max-age=31536000" in response.headers.get(
+            "Strict-Transport-Security", ""
+        )
 
     def test_health_check_performance(self) -> None:
         """ヘルスチェックのレスポンス時間を検証"""
@@ -93,8 +95,13 @@ class TestRootEndpoint:
 
         # レスポンス構造検証
         required_fields = [
-            "message", "version", "description", "docs_url",
-            "redoc_url", "health_url", "timestamp"
+            "message",
+            "version",
+            "description",
+            "docs_url",
+            "redoc_url",
+            "health_url",
+            "timestamp",
         ]
         for field in required_fields:
             assert field in data
@@ -193,7 +200,7 @@ class TestSecurityMiddleware:
             "X-XSS-Protection": "1; mode=block",
             "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
             "Referrer-Policy": "strict-origin-when-cross-origin",
-            "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
+            "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
         }
 
         for header, expected_value in security_headers.items():
@@ -218,7 +225,7 @@ class TestSecurityMiddleware:
             "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: https:",
-            "font-src 'self'"
+            "font-src 'self'",
         ]
 
         for directive in expected_directives:
@@ -295,13 +302,16 @@ class TestCORSMiddleware:
         headers = {
             "Origin": "http://localhost:3000",
             "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "Authorization, Content-Type"
+            "Access-Control-Request-Headers": "Authorization, Content-Type",
         }
 
         response = client.options("/health", headers=headers)
 
         # CORS ヘッダー確認
-        assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"
+        assert (
+            response.headers.get("Access-Control-Allow-Origin")
+            == "http://localhost:3000"
+        )
         assert "GET" in response.headers.get("Access-Control-Allow-Methods", "")
         assert response.headers.get("Access-Control-Allow-Credentials") == "true"
 
@@ -313,7 +323,10 @@ class TestCORSMiddleware:
         response = client.get("/health", headers=headers)
 
         assert response.status_code == 200
-        assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"
+        assert (
+            response.headers.get("Access-Control-Allow-Origin")
+            == "http://localhost:3000"
+        )
 
 
 class TestApplicationLifecycle:
@@ -359,7 +372,9 @@ class TestPerformanceRequirements:
 
         avg_time = sum(times) / len(times)
         # 平均応答時間が50ms以下であることを確認
-        assert avg_time < 0.05, f"Average response time {avg_time:.3f}s exceeds 50ms limit"
+        assert avg_time < 0.05, (
+            f"Average response time {avg_time:.3f}s exceeds 50ms limit"
+        )
 
     def test_concurrent_requests(self) -> None:
         """同時リクエスト処理能力を確認"""

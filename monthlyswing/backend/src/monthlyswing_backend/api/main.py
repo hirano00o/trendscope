@@ -147,8 +147,10 @@ app = FastAPI(
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=[
-        "localhost", "127.0.0.1", "*.monthlyswing.dev",
-        "testserver"  # テスト用ホスト
+        "localhost",
+        "127.0.0.1",
+        "*.monthlyswing.dev",
+        "testserver",  # テスト用ホスト
     ],
 )
 
@@ -374,7 +376,7 @@ async def not_found_handler(request: Request, exc: HTTPException) -> JSONRespons
             error="NotFound",
             message=f"エンドポイント '{request.url.path}' が見つかりません",
             timestamp=datetime.now(UTC),
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -399,7 +401,7 @@ async def method_not_allowed_handler(
             error="MethodNotAllowed",
             message=f"メソッド '{request.method}' はサポートされていません",
             timestamp=datetime.now(UTC),
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -431,7 +433,7 @@ async def internal_server_error_handler(
             error="InternalServerError",
             message="内部サーバーエラーが発生しました",
             timestamp=datetime.now(UTC),
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 

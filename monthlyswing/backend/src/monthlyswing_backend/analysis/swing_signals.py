@@ -680,3 +680,187 @@ def generate_enhanced_factors(
     except Exception as e:
         logger.error(f"拡張根拠生成エラー: {e!s}")
         raise ValueError(f"拡張根拠の生成に失敗しました: {e!s}") from e
+
+
+def generate_complete_signal(
+    monthly_trend_result: MonthlyTrendResult,
+    technical_confidence: Decimal,
+    pattern_confidence: Decimal,
+    volume_confidence: Decimal,
+) -> SwingSignal:
+    """統合シグナルジェネレーター.
+
+    全ての機能を統合して最終的なスイングトレードシグナルを生成する。
+    基本シグナル、価格レベル計算、信頼度評価、拡張根拠生成を組み合わせる。
+
+    Args:
+        monthly_trend_result: 月次トレンド分析結果
+        technical_confidence: テクニカル分析信頼度
+        pattern_confidence: パターン分析信頼度
+        volume_confidence: 出来高分析信頼度
+
+    Returns:
+        SwingSignal: 統合された完全なシグナル
+
+    Raises:
+        ValueError: 無効な入力値の場合
+
+    Example:
+        >>> result = MonthlyTrendResult(...)
+        >>> signal = generate_complete_signal(
+        ...     result, Decimal("0.8"), Decimal("0.7"), Decimal("0.9")
+        ... )
+        >>> assert signal.signal_type in [
+        ...     SignalType.BUY,
+        ...     SignalType.SELL,
+        ...     SignalType.HOLD,
+        ...     SignalType.WAIT,
+        ... ]
+    """
+    try:
+        # 入力値検証
+        if monthly_trend_result is None:
+            raise ValueError("monthly_trend_result は必須です")
+
+        logger.info(f"統合シグナル生成開始: {monthly_trend_result.symbol}")
+
+        confidence_values = [
+            technical_confidence,
+            pattern_confidence,
+            volume_confidence,
+        ]
+        for i, value in enumerate(confidence_values):
+            if not (Decimal("0.0") <= value <= Decimal("1.0")):
+                raise ValueError(
+                    f"信頼度値が範囲外です（0-1）: index={i}, value={value}"
+                )
+
+        # Step 1: 基本シグナル生成
+        logger.info("Step 1: 基本シグナル生成")
+        basic_signal = generate_basic_signal(monthly_trend_result)
+
+        # Step 2: 複合信頼度計算
+        logger.info("Step 2: 複合信頼度計算")
+        trend_strength = monthly_trend_result.trend_strength.strength
+        weights = {
+            "technical": Decimal("0.30"),
+            "pattern": Decimal("0.25"),
+            "volume": Decimal("0.20"),
+            "trend": Decimal("0.25"),
+        }
+
+        composite_confidence = calculate_composite_confidence(
+            technical_confidence=technical_confidence,
+            pattern_confidence=pattern_confidence,
+            volume_confidence=volume_confidence,
+            trend_strength=trend_strength,
+            weights=weights,
+        )
+
+        # Step 3: 価格レベル計算
+        logger.info("Step 3: 価格レベル計算")
+
+        # MonthlyTrendResultから現在価格を取得（最新の月次リターンの終値）
+        if monthly_trend_result.monthly_returns:
+            current_price = monthly_trend_result.monthly_returns[-1].end_price
+        else:
+            raise ValueError(
+                "月次リターンデータが不足しているため、現在価格を取得できません"
+            )
+
+        # support_resistanceは辞書形式
+        support_levels = monthly_trend_result.support_resistance.get("support", [])
+        resistance_levels = monthly_trend_result.support_resistance.get(
+            "resistance", []
+        )
+
+        target_price = None
+        stop_loss = None
+        risk_reward_ratio = None
+
+        # BUYまたはSELLシグナルの場合のみ価格計算
+        if basic_signal.signal_type in [SignalType.BUY, SignalType.SELL]:
+            try:
+                target_price = calculate_target_price(
+                    current_price=current_price,
+                    signal_type=basic_signal.signal_type,
+                    resistance_levels=resistance_levels,
+                    support_levels=support_levels,
+                    expected_return_rate=Decimal("0.12"),  # 12%期待リターン
+                )
+
+                stop_loss = calculate_stop_loss(
+                    current_price=current_price,
+                    signal_type=basic_signal.signal_type,
+                    support_levels=support_levels,
+                    resistance_levels=resistance_levels,
+                    risk_tolerance=Decimal("0.08"),  # 8%リスク許容度
+                )
+
+                risk_reward_ratio = calculate_risk_reward_ratio(
+                    current_price=current_price,
+                    target_price=target_price,
+                    stop_loss=stop_loss,
+                )
+
+            except Exception as e:
+                logger.warning(f"価格レベル計算でエラー: {e!s}. デフォルト値を使用")
+                # フォールバック価格設定
+                if basic_signal.signal_type == SignalType.BUY:
+                    target_price = current_price * Decimal("1.12")
+                    stop_loss = current_price * Decimal("0.92")
+                else:  # SELL
+                    target_price = current_price * Decimal("0.88")
+                    stop_loss = current_price * Decimal("1.08")
+
+                risk_reward_ratio = calculate_risk_reward_ratio(
+                    current_price=current_price,
+                    target_price=target_price,
+                    stop_loss=stop_loss,
+                )
+
+        # Step 4: 拡張根拠生成
+        logger.info("Step 4: 拡張根拠生成")
+        analysis_data = {
+            "technical_confidence": technical_confidence,
+            "pattern_confidence": pattern_confidence,
+            "volume_confidence": volume_confidence,
+            "trend_strength": trend_strength,
+            "price_momentum": monthly_trend_result.trend_strength.momentum,
+            "current_price": current_price,
+        }
+
+        # 価格データが計算できた場合は追加
+        if target_price is not None:
+            analysis_data["target_price"] = target_price
+        if stop_loss is not None:
+            analysis_data["stop_loss"] = stop_loss
+        if risk_reward_ratio is not None:
+            analysis_data["risk_reward_ratio"] = risk_reward_ratio
+
+        enhanced_factors = generate_enhanced_factors(
+            signal_type=basic_signal.signal_type,
+            analysis_data=analysis_data,
+            composite_confidence=composite_confidence,
+        )
+
+        # Step 5: 統合シグナル構築
+        logger.info("Step 5: 統合シグナル構築")
+        final_signal = SwingSignal(
+            signal_type=basic_signal.signal_type,
+            confidence=composite_confidence,  # 複合信頼度を使用
+            supporting_factors=enhanced_factors,  # 拡張根拠を使用
+            generated_at=datetime.now(UTC),
+        )
+
+        logger.info(
+            f"統合シグナル生成完了: {final_signal.signal_type.value}, "
+            f"信頼度: {final_signal.confidence:.3f}, "
+            f"根拠数: {len(final_signal.supporting_factors)}"
+        )
+
+        return final_signal
+
+    except Exception as e:
+        logger.error(f"統合シグナル生成エラー: {e!s}")
+        raise ValueError(f"統合シグナルの生成に失敗しました: {e!s}") from e
