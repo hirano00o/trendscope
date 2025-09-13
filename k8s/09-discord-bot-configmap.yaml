@@ -16,3 +16,10 @@ data:
   MAX_WORKERS: "10"
   TOP_STOCKS_COUNT: "15"
   LOG_LEVEL: "INFO"  # "DEBUG", "INFO", "WARN", "ERROR"
+  
+  # SQLite Database configuration
+  DATABASE_PATH: "/data/db/stocks.db"
+  PRICE_FILTER_ENABLED: "true"
+  MIN_STOCK_PRICE: "100.0"
+  MAX_STOCK_PRICE: "5000.0"
+  CSV_FALLBACK_ENABLED: "true"
