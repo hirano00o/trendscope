@@ -52,6 +52,11 @@ from monthlyswing_backend.utils.error_handling import (
     retry_on_error,
     validate_dataframe,
 )
+from monthlyswing_backend.utils.performance import (
+    async_parallel_execute,
+    cache_result,
+    cache_key_for_symbol_and_period,
+)
 
 # ロガー設定
 logger = logging.getLogger(__name__)
@@ -119,21 +124,22 @@ class MonthlySwingService:
         try:
             logger.info(f"月次スイング分析開始: {symbol}")
 
-            # Step 1: 株価データ取得
+            # Step 1: 株価データ取得（必須の最初のステップ）
             logger.info("Step 1: 株価データ取得")
             stock_data = await self._fetch_stock_data(symbol)
 
-            # Step 2: 月次トレンド分析実行
-            logger.info("Step 2: 月次トレンド分析実行")
-            monthly_trend_result = await self._analyze_monthly_trend(symbol, stock_data)
-
-            # Step 3: テクニカル信頼度計算
-            logger.info("Step 3: テクニカル信頼度計算")
-            technical_confidences = await self._calculate_technical_confidences(
-                stock_data
+            # Step 2-3: 並列実行可能な分析タスク
+            logger.info("Step 2-3: 並列分析実行（月次トレンド分析＋テクニカル信頼度計算）")
+            parallel_tasks = [
+                self._analyze_monthly_trend(symbol, stock_data),
+                self._calculate_technical_confidences(stock_data)
+            ]
+            
+            monthly_trend_result, technical_confidences = await async_parallel_execute(
+                parallel_tasks, semaphore_limit=2
             )
 
-            # Step 4: スイングシグナル生成
+            # Step 4: スイングシグナル生成（前のステップの結果に依存）
             logger.info("Step 4: スイングシグナル生成")
             swing_signal = await self._generate_swing_signal(
                 monthly_trend_result, technical_confidences
@@ -166,6 +172,7 @@ class MonthlySwingService:
             logger.error(f"月次スイング分析エラー: {symbol} - {e!s}")
             raise ValueError(f"月次スイング分析に失敗しました: {symbol}") from e
 
+    @cache_result(ttl=300, key_func=lambda self, symbol: cache_key_for_symbol_and_period(symbol, "3mo", "stock_data"))
     @retry_on_error(max_retries=3, delay=1.0, backoff_factor=2.0)
     @handle_errors("株価データ取得")
     async def _fetch_stock_data(self, symbol: str) -> pd.DataFrame:
@@ -260,6 +267,7 @@ class MonthlySwingService:
                     context={"original_error": str(exc)}
                 ) from exc
 
+    @cache_result(ttl=180, key_func=lambda self, symbol, stock_data: f"monthly_trend:{symbol}:{len(stock_data)}:{hash(str(stock_data.iloc[-1]['close']))}")
     async def _analyze_monthly_trend(
         self, symbol: str, stock_data: pd.DataFrame
     ) -> MonthlyTrendResult:
@@ -288,6 +296,7 @@ class MonthlySwingService:
             logger.error(f"月次トレンド分析エラー: {symbol} - {e!s}")
             raise ValueError(f"月次トレンド分析に失敗しました: {symbol}") from e
 
+    @cache_result(ttl=120, key_func=lambda self, stock_data: f"technical_conf:{len(stock_data)}:{hash(str(stock_data.iloc[-1]['close']))}")
     async def _calculate_technical_confidences(
         self, stock_data: pd.DataFrame
     ) -> dict[str, Decimal]:
