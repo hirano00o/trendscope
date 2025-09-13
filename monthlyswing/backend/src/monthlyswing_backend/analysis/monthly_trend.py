@@ -772,3 +772,28 @@ class MonthlyTrendAnalyzer:
         except Exception as e:
             logger.error(f"{symbol}の月次トレンド分析エラー: {e!s}")
             raise ValueError(f"月次トレンド分析に失敗しました: {e!s}")
+
+    async def analyze_trend(
+        self, symbol: str, stock_data: pd.DataFrame
+    ) -> MonthlyTrendResult:
+        """非同期版月次トレンド分析.
+
+        MonthlySwingServiceから呼び出される非同期バージョン。
+        内部的には同期版analyze_monthly_trendを呼び出す。
+
+        Args:
+            symbol: 株式シンボル
+            stock_data: 株価データ（pandas DataFrame形式）
+
+        Returns:
+            MonthlyTrendResult: 月次トレンド分析結果
+
+        Raises:
+            ValueError: 分析エラー
+
+        Example:
+            >>> analyzer = MonthlyTrendAnalyzer(config)
+            >>> result = await analyzer.analyze_trend("AAPL", stock_data)
+        """
+        # 同期版メソッドを呼び出し
+        return self.analyze_monthly_trend(symbol, stock_data)

@@ -437,7 +437,66 @@ async def internal_server_error_handler(
     )
 
 
-# TODO: 月次分析エンドポイント実装
-# TODO: スイングシグナルエンドポイント実装
-# TODO: リスク評価エンドポイント実装
-# TODO: パフォーマンストラッキングエンドポイント実装
+# 月次スイングトレード統合エンドポイント
+@app.get("/api/v1/monthly-swing/analysis/{symbol}")
+async def monthly_swing_analysis(symbol: str) -> dict[str, Any]:
+    """月次スイングトレード統合分析エンドポイント.
+
+    指定された株式シンボルに対して月次トレンド分析からシグナル生成まで
+    一気通貫で実行し、統合された分析結果を返す。
+
+    Args:
+        symbol: 株式シンボル (例: "AAPL", "MSFT", "7203.T")
+
+    Returns:
+        dict[str, Any]: 統合分析結果
+            - symbol: 分析対象シンボル
+            - analysis_timestamp: 分析実行時刻
+            - monthly_trend_analysis: 月次トレンド分析結果
+            - swing_signal: スイングトレードシグナル
+            - integrated_analysis: 統合分析スコア
+            - risk_assessment: リスク評価
+            - metadata: 分析メタデータ
+
+    Raises:
+        HTTPException: 400 - 無効なシンボル
+        HTTPException: 404 - データが見つからない
+        HTTPException: 503 - サービス利用不可
+
+    Example:
+        GET /api/v1/monthly-swing/analysis/AAPL
+        → 月次スイング分析結果を返す
+    """
+    try:
+        # シンボル形式の基本検証
+        if not symbol or len(symbol) < 1 or len(symbol) > 20:
+            raise HTTPException(
+                status_code=400, detail=f"無効な株式シンボルです: {symbol}"
+            )
+
+        logger.info(f"月次スイング分析リクエスト: {symbol}")
+
+        # MonthlySwingServiceを使用して統合分析実行
+        from monthlyswing_backend.services.monthly_swing_service import (
+            analyze_monthly_swing_simple,
+        )
+
+        result = await analyze_monthly_swing_simple(symbol)
+
+        logger.info(f"月次スイング分析完了: {symbol}")
+        return result
+
+    except HTTPException:
+        # HTTPExceptionはそのまま再発生
+        raise
+    except ValueError as e:
+        # 値エラーは400 Bad Requestとして処理
+        logger.warning(f"月次スイング分析エラー: {symbol} - {e!s}")
+        raise HTTPException(status_code=400, detail=f"分析エラー: {e!s}")
+    except Exception as e:
+        # その他のエラーは503 Service Unavailableとして処理
+        logger.error(f"月次スイング分析内部エラー: {symbol} - {e!s}")
+        raise HTTPException(
+            status_code=503,
+            detail="一時的に分析サービスが利用できません。しばらく時間をおいて再試行してください。",
+        )
