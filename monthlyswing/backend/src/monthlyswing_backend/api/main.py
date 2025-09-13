@@ -30,6 +30,15 @@ from typing import Any
 
 import structlog
 from fastapi import FastAPI, HTTPException, Request
+from monthlyswing_backend.exceptions import (
+    DataNotFoundError,
+    DataValidationError,
+    ExternalServiceError,
+    InsufficientDataError,
+    MonthlySwingError,
+    NetworkError,
+    YFinanceError,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -489,14 +498,43 @@ async def monthly_swing_analysis(symbol: str) -> dict[str, Any]:
     except HTTPException:
         # HTTPExceptionはそのまま再発生
         raise
-    except ValueError as e:
-        # 値エラーは400 Bad Requestとして処理
-        logger.warning(f"月次スイング分析エラー: {symbol} - {e!s}")
-        raise HTTPException(status_code=400, detail=f"分析エラー: {e!s}")
-    except Exception as e:
-        # その他のエラーは503 Service Unavailableとして処理
-        logger.error(f"月次スイング分析内部エラー: {symbol} - {e!s}")
+    except DataNotFoundError as e:
+        # データが見つからない場合は404 Not Found
+        logger.warning(f"データ取得失敗: {symbol} - {e.error_code}: {e}")
+        raise HTTPException(
+            status_code=404, 
+            detail=f"シンボル {symbol} のデータが見つかりません: {e}"
+        )
+    except (DataValidationError, InsufficientDataError) as e:
+        # データ検証エラーは400 Bad Request
+        logger.warning(f"データ検証エラー: {symbol} - {e.error_code}: {e}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"分析エラー: {e}"
+        )
+    except (YFinanceError, NetworkError, ExternalServiceError) as e:
+        # 外部サービス関連エラーは503 Service Unavailable
+        logger.error(f"外部サービスエラー: {symbol} - {e.error_code}: {e}")
         raise HTTPException(
             status_code=503,
-            detail="一時的に分析サービスが利用できません。しばらく時間をおいて再試行してください。",
+            detail=f"データプロバイダーに接続できません。しばらく後に再試行してください"
+        )
+    except MonthlySwingError as e:
+        # カスタム例外は適切なHTTPステータスに変換
+        logger.error(f"月次スイング分析エラー: {symbol} - {e.error_code}: {e}")
+        status_code = 400 if "VALIDATION" in e.error_code else 500
+        raise HTTPException(
+            status_code=status_code,
+            detail=f"分析エラー: {e}"
+        )
+    except ValueError as e:
+        # レガシー値エラーは400 Bad Requestとして処理
+        logger.warning(f"値エラー: {symbol} - {e!s}")
+        raise HTTPException(status_code=400, detail=f"分析エラー: {e!s}")
+    except Exception as e:
+        # その他の予期しないエラーは500 Internal Server Error
+        logger.error(f"予期しないエラー: {symbol} - {e!s}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"内部サーバーエラーが発生しました"
         )

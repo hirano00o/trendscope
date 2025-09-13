@@ -19,6 +19,7 @@
 """
 
 import logging
+import time
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -33,10 +34,23 @@ from monthlyswing_backend.analysis.monthly_trend import (
 from monthlyswing_backend.analysis.swing_signals import (
     generate_complete_signal,
 )
+from monthlyswing_backend.exceptions import (
+    DataNotFoundError,
+    DataValidationError,
+    InsufficientDataError,
+    MonthlySwingError,
+    YFinanceError,
+)
 from monthlyswing_backend.models.swing_models import (
     MonthlyTrendResult,
     SignalType,
     SwingSignal,
+)
+from monthlyswing_backend.utils.error_handling import (
+    handle_errors,
+    log_performance_metrics,
+    retry_on_error,
+    validate_dataframe,
 )
 
 # ロガー設定
@@ -152,11 +166,16 @@ class MonthlySwingService:
             logger.error(f"月次スイング分析エラー: {symbol} - {e!s}")
             raise ValueError(f"月次スイング分析に失敗しました: {symbol}") from e
 
+    @retry_on_error(max_retries=3, delay=1.0, backoff_factor=2.0)
+    @handle_errors("株価データ取得")
     async def _fetch_stock_data(self, symbol: str) -> pd.DataFrame:
         """株価データ取得.
 
         yfinanceを使用して指定期間の株価データを取得し、
         分析に必要な前処理を実行する。
+        
+        自動リトライ機能付きで、ネットワークエラーやyfinanceエラーを
+        適切にハンドリングする。
 
         Args:
             symbol: 株式シンボル
@@ -165,46 +184,81 @@ class MonthlySwingService:
             pd.DataFrame: 前処理済み株価データ
 
         Raises:
-            ValueError: データ取得失敗またはデータ不足
+            DataNotFoundError: 指定されたシンボルのデータが見つからない
+            InsufficientDataError: 分析に必要なデータ量が不足
+            DataValidationError: データの形式が不正
+            YFinanceError: yfinanceライブラリエラー
         """
-        try:
-            # 3ヶ月分のデータを取得（月次分析に十分な期間）
-            end_date = datetime.now(UTC)
-            start_date = end_date - timedelta(days=120)  # 約4ヶ月
+        start_time = time.time()
+        
+        # 3ヶ月分のデータを取得（月次分析に十分な期間）
+        end_date = datetime.now(UTC)
+        start_date = end_date - timedelta(days=120)  # 約4ヶ月
 
+        try:
             # yfinanceでデータ取得
             ticker = yf.Ticker(symbol)
             stock_data = ticker.history(start=start_date, end=end_date, interval="1d")
 
+            # データが空の場合
             if stock_data.empty:
-                raise ValueError(f"株価データが取得できませんでした: {symbol}")
-
-            if len(stock_data) < self.analysis_config.min_data_points:
-                raise ValueError(
-                    f"分析に必要なデータポイント数が不足しています: "
-                    f"取得数={len(stock_data)}, 必要数={self.analysis_config.min_data_points}"
+                raise DataNotFoundError(
+                    f"シンボル {symbol} のデータが見つかりません",
+                    symbol=symbol,
+                    source="yfinance",
+                    context={
+                        "start_date": start_date.isoformat(),
+                        "end_date": end_date.isoformat()
+                    }
                 )
 
             # データ前処理
             stock_data = stock_data.reset_index()
             stock_data.columns = [col.lower() for col in stock_data.columns]
 
-            # 必要な列の存在確認
+            # データ検証
             required_columns = ["date", "open", "high", "low", "close", "volume"]
-            missing_columns = [
-                col for col in required_columns if col not in stock_data.columns
-            ]
-            if missing_columns:
-                raise ValueError(f"必要な列が不足しています: {missing_columns}")
-
-            logger.info(
-                f"株価データ取得完了: {symbol} - {len(stock_data)}件のデータポイント"
+            validate_dataframe(
+                stock_data,
+                required_columns,
+                min_rows=self.analysis_config.min_data_points,
+                operation_name="株価データ取得"
             )
+
+            # パフォーマンス指標をログ出力
+            log_performance_metrics(
+                "株価データ取得",
+                start_time,
+                data_points=len(stock_data),
+                symbol=symbol,
+                columns_count=len(stock_data.columns)
+            )
+
             return stock_data
 
-        except Exception as e:
-            logger.error(f"株価データ取得エラー: {symbol} - {e!s}")
-            raise ValueError(f"株価データの取得に失敗しました: {symbol}") from e
+        except (DataNotFoundError, InsufficientDataError, DataValidationError):
+            # 既にカスタム例外の場合はそのまま再発生
+            raise
+        except Exception as exc:
+            # yfinance特有のエラーを分類
+            if "ticker" in str(exc).lower() or "yahoo" in str(exc).lower():
+                raise YFinanceError(
+                    f"yfinanceからのデータ取得に失敗しました: {exc}",
+                    symbol=symbol,
+                    context={
+                        "start_date": start_date.isoformat(),
+                        "end_date": end_date.isoformat(),
+                        "original_error": str(exc)
+                    }
+                ) from exc
+            else:
+                # その他のエラーは一般的なデータ取得エラーとして処理
+                raise DataNotFoundError(
+                    f"データ取得中に予期しないエラーが発生しました: {exc}",
+                    symbol=symbol,
+                    source="yfinance",
+                    context={"original_error": str(exc)}
+                ) from exc
 
     async def _analyze_monthly_trend(
         self, symbol: str, stock_data: pd.DataFrame
