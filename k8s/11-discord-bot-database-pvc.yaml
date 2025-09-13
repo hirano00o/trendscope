@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: discord-bot-database-pvc
+  namespace: trendscope
+  labels:
+    app.kubernetes.io/name: trendscope
+    app.kubernetes.io/component: discord-bot-database
+spec:
+  accessModes:
+    - ReadOnlyMany  # Read-only access for discord-bot
+  resources:
+    requests:
+      storage: 5Gi  # Same size as stock-db-batch PVC
+  storageClassName: nfs-client  # Same NFS storage as stock-db-batch

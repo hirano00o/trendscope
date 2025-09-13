@@ -13,6 +13,7 @@ import (
 	"github.com/hirano00o/trendscope/discord-bot/internal/worker"
 	"github.com/hirano00o/trendscope/discord-bot/pkg/api"
 	"github.com/hirano00o/trendscope/discord-bot/pkg/csv"
+	"github.com/hirano00o/trendscope/discord-bot/pkg/database"
 	"github.com/hirano00o/trendscope/discord-bot/pkg/discord"
 	"github.com/hirano00o/trendscope/discord-bot/pkg/scheduler"
 )
@@ -151,8 +152,8 @@ func (app *App) Run(ctx context.Context) error {
 // runStockAnalysis performs the main stock analysis workflow
 //
 // @description 株式分析のメインワークフローを実行する
-// CSV読み込み → 並列分析 → 結果ソート → Discord通知
-// エラー処理と詳細なロギングを含む
+// SQLite読み込み（CSVフォールバック） → 並列分析 → 結果ソート → Discord通知
+// 価格フィルタリングとエラー処理、詳細なロギングを含む
 //
 // @param {context.Context} ctx 分析処理のコンテキスト
 // @throws {error} ワークフローの実行に失敗した場合
@@ -170,13 +171,17 @@ func (app *App) runStockAnalysis(ctx context.Context) error {
 	log.Printf("=== Starting Stock Analysis Workflow ===")
 	startTime := time.Now()
 
-	// Step 1: Read CSV data
-	log.Printf("Step 1: Reading CSV data from %s", app.config.CSVPath)
-	stocks, err := csv.ReadStocksFromCSV(app.config.CSVPath, configs.IsDebugEnabled(app.config))
+	// Step 1: Load stock data (SQLite or CSV fallback)
+	log.Printf("Step 1: Loading stock data")
+	stocks, dataSource, err := loadStockData(app.config)
 	if err != nil {
-		return fmt.Errorf("failed to read CSV: %w", err)
+		return fmt.Errorf("failed to load stock data: %w", err)
 	}
-	log.Printf("Successfully read %d stocks from CSV", len(stocks))
+	log.Printf("Successfully loaded %d stocks from %s", len(stocks), dataSource)
+
+	if len(stocks) == 0 {
+		return fmt.Errorf("no stocks found after filtering")
+	}
 
 	// Step 2: Create analysis requests
 	log.Printf("Step 2: Creating analysis requests")
@@ -226,6 +231,11 @@ func (app *App) runStockAnalysis(ctx context.Context) error {
 
 	duration := time.Since(startTime)
 	log.Printf("=== Stock Analysis Workflow Completed Successfully in %v ===", duration)
+	log.Printf("Data Source: %s", dataSource)
+	if app.config.IsPriceFilterEnabled() {
+		minPrice, maxPrice := app.config.GetPriceRange()
+		log.Printf("Price Filter: %.2f - %.2f", minPrice, maxPrice)
+	}
 	log.Printf("Top 3 Results:")
 	for i, result := range stockResults {
 		if i >= 3 {
@@ -288,16 +298,188 @@ func (app *App) shutdown() error {
 	return nil
 }
 
+// loadStockData loads stock data from SQLite or CSV fallback
+//
+// @description SQLiteデータベースまたはCSVフォールバックから株式データを読み込む
+// 価格フィルタリングを適用し、データソースの自動判定を行う
+//
+// @param {*configs.Config} config アプリケーション設定
+// @returns {[]*csv.Stock, string, error} 株式データ、データソース名、エラー
+//
+// @example
+// ```go
+// config := configs.Load()
+// stocks, source, err := loadStockData(config)
+// if err != nil {
+//     log.Printf("Failed to load stock data: %v", err)
+// }
+// log.Printf("Loaded %d stocks from %s", len(stocks), source)
+// ```
+func loadStockData(config *configs.Config) ([]*csv.Stock, string, error) {
+	dataSource := determineDataSource(config)
+	
+	switch dataSource {
+	case "SQLite":
+		return loadStockDataFromSQLite(config)
+	case "CSV":
+		return loadStockDataFromCSV(config)
+	default:
+		return nil, "", fmt.Errorf("no valid data source available (SQLite: %s, CSV: %s, Fallback: %v)",
+			config.DatabasePath, config.CSVPath, config.CSVFallbackEnabled)
+	}
+}
+
+// loadStockDataFromSQLite loads and filters stock data from SQLite database
+//
+// @description SQLiteデータベースから株式データを読み込み、フィルタリングを適用
+//
+// @param {*configs.Config} config アプリケーション設定
+// @returns {[]*csv.Stock, string, error} 株式データ、データソース名、エラー
+func loadStockDataFromSQLite(config *configs.Config) ([]*csv.Stock, string, error) {
+	// Create database service
+	service, err := database.NewService(config)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create database service: %w", err)
+	}
+	defer service.Close()
+
+	// Validate database connection and schema
+	if err := service.ValidateConnection(); err != nil {
+		return nil, "", fmt.Errorf("database validation failed: %w", err)
+	}
+
+	// Get filtered companies based on configuration
+	companies, err := service.GetFilteredCompanies()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get filtered companies: %w", err)
+	}
+
+	if len(companies) == 0 {
+		configs.LogDebug(config, "No companies found after filtering")
+		return []*csv.Stock{}, "SQLite", nil
+	}
+
+	// Convert to compatible stock format
+	adapter := database.NewStockAdapter(companies)
+	stocks := adapter.GetStocks()
+
+	// Validate compatibility
+	if err := database.ValidateStockCompatibility(stocks); err != nil {
+		return nil, "", fmt.Errorf("stock compatibility validation failed: %w", err)
+	}
+
+	sourceInfo := database.GetSourceInfo(service)
+	sourceInfo.FilteredCompanies = len(companies)
+
+	configs.LogDebug(config, "SQLite data loaded: %d companies (total: %d, filter: %s)",
+		sourceInfo.FilteredCompanies, sourceInfo.TotalCompanies, sourceInfo.FilterCriteria)
+
+	return stocks, "SQLite", nil
+}
+
+// loadStockDataFromCSV loads stock data from CSV file
+//
+// @description CSVファイルから株式データを読み込む（フォールバック用）
+//
+// @param {*configs.Config} config アプリケーション設定
+// @returns {[]*csv.Stock, string, error} 株式データ、データソース名、エラー
+func loadStockDataFromCSV(config *configs.Config) ([]*csv.Stock, string, error) {
+	stocks, err := csv.ReadStocksFromCSV(config.CSVPath, configs.IsDebugEnabled(config))
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read CSV: %w", err)
+	}
+
+	configs.LogDebug(config, "CSV data loaded: %d stocks from %s", len(stocks), config.CSVPath)
+	return stocks, "CSV", nil
+}
+
+// determineDataSource determines which data source to use
+//
+// @description 利用可能なデータソースを判定する
+// SQLiteを優先し、利用できない場合はCSVフォールバックを検討
+//
+// @param {*configs.Config} config アプリケーション設定
+// @returns {string} 使用するデータソース ("SQLite", "CSV", "" if none available)
+func determineDataSource(config *configs.Config) string {
+	// Check SQLite database availability
+	if isDatabaseAvailable(config.DatabasePath) {
+		return "SQLite"
+	}
+
+	// Check CSV fallback
+	if config.CSVFallbackEnabled && isCSVAvailable(config.CSVPath) {
+		configs.LogDebug(config, "SQLite unavailable, falling back to CSV: %s", config.CSVPath)
+		return "CSV"
+	}
+
+	return ""
+}
+
+// isDatabaseAvailable checks if SQLite database is available
+//
+// @description SQLiteデータベースファイルが利用可能かチェック
+//
+// @param {string} databasePath データベースファイルのパス
+// @returns {bool} 利用可能な場合true
+func isDatabaseAvailable(databasePath string) bool {
+	if databasePath == "" || databasePath == ":memory:" {
+		return false
+	}
+
+	// Check if file exists and is readable
+	if _, err := os.Stat(databasePath); err != nil {
+		return false
+	}
+
+	// Try to create a connection to validate
+	conn, err := database.NewConnection(databasePath)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+
+	if err := conn.Connect(); err != nil {
+		return false
+	}
+
+	return true
+}
+
+// isCSVAvailable checks if CSV file is available
+//
+// @description CSVファイルが利用可能かチェック
+//
+// @param {string} csvPath CSVファイルのパス
+// @returns {bool} 利用可能な場合true
+func isCSVAvailable(csvPath string) bool {
+	if csvPath == "" {
+		return false
+	}
+
+	// Check if file exists and is readable
+	if _, err := os.Stat(csvPath); err != nil {
+		return false
+	}
+
+	return true
+}
+
 // main is the application entry point
 //
 // @description アプリケーションのエントリーポイント
 // アプリケーションを初期化し、実行を開始
+// SQLiteデータベース統合により企業データの価格フィルタリングが可能
 //
 // @example
 // 環境変数の設定例：
 // ```bash
 // export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 // export BACKEND_API_URL="http://backend:8000"
+// export DATABASE_PATH="/data/stocks.db"
+// export PRICE_FILTER_ENABLED="true"
+// export MIN_STOCK_PRICE="100.0"
+// export MAX_STOCK_PRICE="5000.0"
+// export CSV_FALLBACK_ENABLED="true"
 // export CSV_PATH="./screener_result.csv"
 // export CRON_SCHEDULE="0 10 * * 1-5"
 // export MAX_WORKERS="10"
