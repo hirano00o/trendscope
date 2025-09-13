@@ -1,0 +1,29 @@
+# Bun configuration for Monthly Swing Trading frontend
+
+[test]
+# Use DOM environment for React component testing
+preload = ["./src/__tests__/setup.ts"]
+
+# Configure DOM environment
+root = "./src"
+environment = "jsdom"
+
+# Test file patterns
+include = [
+  "**/*.test.{ts,tsx,js,jsx}",
+  "**/__tests__/**/*.{ts,tsx,js,jsx}"
+]
+
+# Exclude patterns
+exclude = [
+  "**/node_modules/**",
+  "**/.next/**",
+  "**/dist/**",
+  "**/build/**"
+]
+
+# Timeout settings
+timeout = 30000
+
+# Coverage settings
+coverage = true
